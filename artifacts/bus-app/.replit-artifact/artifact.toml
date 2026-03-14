@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "bus.app"
+version = "1.0.0"
+id = "artifacts/bus-app"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 20614
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/bus-app run dev"
+
+[services.env]
+PORT = "20614"
+BASE_PATH = "/"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/bus-app", "run", "build"]
+publicDir = "artifacts/bus-app/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"

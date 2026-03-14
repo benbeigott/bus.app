@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUS.STORE | Access</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050505; color: #facc15; font-family: 'Space Grotesk', sans-serif; overflow: hidden; }
+        .royal-font { font-family: 'Cinzel', serif; }
+        .gold-glow { box-shadow: 0 0 20px rgba(250, 204, 21, 0.2); }
+        .glass-panel { background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(15px); border: 1px solid rgba(250, 204, 21, 0.2); }
+        .cell-free { border: 1px solid rgba(250, 204, 21, 0.1); cursor: pointer; transition: 0.2s; }
+        .cell-free:hover { background: rgba(250, 204, 21, 0.1); border-color: #facc15; }
+        .cell-booked { background: #facc15; color: #000; font-size: 9px; font-weight: bold; overflow: hidden; border: 1px solid #000; }
+        input { background: #111 !important; border: 1px solid #333 !important; color: #facc15 !important; padding: 12px; border-radius: 8px; outline: none; }
+        input:focus { border-color: #facc15 !important; }
+    </style>
+</head>
+<body class="h-screen w-screen m-0">
+
+    <div id="loginScreen" class="fixed inset-0 z-[500] bg-black flex flex-col items-center justify-center">
+        <div class="text-center mb-12">
+            <h1 class="text-6xl font-bold tracking-tighter mb-2">BUS.<span class="text-white">STORE</span></h1>
+            <p class="text-xs tracking-[0.4em] opacity-40 uppercase">Elite Dispatch Access</p>
+        </div>
+        
+        <div class="glass-panel p-10 rounded-2xl w-full max-w-sm gold-glow text-center">
+            <h2 class="text-xl font-bold mb-6 text-white">PARTNER LOGIN</h2>
+            <div class="flex flex-col gap-4">
+                <input type="text" placeholder="Nutzername">
+                <input type="password" placeholder="Passwort">
+                <button onclick="showApp()" class="bg-yellow-400 text-black font-bold p-4 rounded-lg hover:bg-yellow-300 transition uppercase tracking-widest text-sm">Eintreten</button>
+            </div>
+            <p class="mt-6 text-[10px] opacity-30 italic">Nur für registrierte Busunternehmer.</p>
+        </div>
+
+        <div class="mt-20 opacity-20 hover:opacity-100 transition cursor-pointer flex flex-col items-center" onclick="openKingMode()">
+            <div class="w-8 h-8 border-2 border-yellow-400 rounded-full flex items-center justify-center mb-2">
+                <span class="text-yellow-400 text-xs">👑</span>
+            </div>
+            <span class="text-[10px] uppercase tracking-widest">Master Access</span>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden h-screen flex-col">
+        <header class="flex justify-between items-center p-6 border-b-2 border-yellow-400 bg-black">
+            <h1 class="text-2xl font-bold tracking-tighter">BUS.<span class="text-white">STORE</span></h1>
+            <div class="flex items-center gap-4">
+                <div class="text-right mr-4">
+                    <p class="text-[10px] opacity-50">ANGEMELDET ALS</p>
+                    <p class="text-xs font-bold text-white uppercase" id="userRole">Standard Partner</p>
+                </div>
+                <button onclick="location.reload()" class="text-[10px] border border-yellow-900 px-2 py-1 rounded">LOGOUT</button>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            <aside class="w-64 bg-[#0a0a0a] border-r border-yellow-900/30 flex flex-col">
+                <div class="p-4 bg-yellow-400/5"><h3 class="text-[10px] uppercase font-bold text-yellow-600">Fahrzeuge</h3></div>
+                <div id="vehicleList" class="flex-1 overflow-y-auto"></div>
+            </aside>
+
+            <main class="flex-1 overflow-auto bg-[#080808]">
+                <div class="inline-block min-w-full">
+                    <div class="flex sticky top-0 bg-black z-40 border-b border-yellow-900/50" id="calendarHeader"></div>
+                    <div id="calendarRows"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="bookingModal" class="fixed inset-0 bg-black/95 z-[600] hidden items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-xl max-w-md w-full border-2 border-yellow-400">
+            <h2 class="royal-font text-2xl mb-6 italic">FAHRT BELEGEN</h2>
+            <div class="flex flex-col gap-4">
+                <input type="text" id="routeInfo" placeholder="Tour (z.B. SLS -> Paris)">
+                <input type="number" id="priceInfo" placeholder="Angebotener Preis (€)">
+                <button onclick="confirmBooking()" class="bg-yellow-400 text-black p-4 font-bold rounded hover:bg-yellow-300 transition">BESTÄTIGEN</button>
+                <button onclick="closeModal()" class="text-xs opacity-50 hover:opacity-100">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="kingOverlay" class="fixed inset-0 bg-black z-[1000] hidden flex-col items-center justify-center">
+        <div class="text-center p-8">
+            <div class="w-56 h-56 mx-auto rounded-full border-4 border-yellow-400 overflow-hidden mb-6 shadow-[0_0_60px_rgba(250,204,21,0.4)]">
+                <img src="https://images.

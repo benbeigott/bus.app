@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUS.STORE | Elite Dispatch Access</title>
+    <script src="[cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <link rel="preconnect" href="[fonts.googleapis.com](https://fonts.googleapis.com)">
+    <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap)" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'black-deep': '#000000',
+                        'black-surface': '#0a0a0a',
+                        'black-elevated': '#111111',
+                        'black-card': '#0d0d0d',
+                        'gold': {
+                            light: '#E8C56C',
+                            DEFAULT: '#C9A227',
+                            dark: '#A67C31'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Inter', system-ui, sans-serif; 
+            background: #000;
+            min-height: 100vh;
+        }
+        
+        .gold-border-gradient {
+            position: relative;
+            background: #0d0d0d;
+        }
+        .gold-border-gradient::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(180deg, rgba(201,162,39,0.3) 0%, rgba(201,162,39,0.05) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        .input-elite {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .input-elite::placeholder { color: #444; }
+        .input-elite:focus { 
+            border-color: rgba(201,162,39,0.4);
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .btn-gold {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #A67C31 0%, #C9A227 50%, #E8C56C 100%);
+            color: #000;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.05em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(201,162,39,0.25);
+        }
+        .btn-gold:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-outline {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            color: #C9A227;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.05em;
+            border: 1px solid rgba(201,162,39,0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-outline:hover {
+            background: rgba(201,162,39,0.1);
+            border-color: rgba(201,162,39,0.5);
+        }
+        
+        .corner-decoration {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(201,162,39,0.15);
+        }
+        .corner-tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .corner-tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+        .corner-bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+        .corner-br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+        
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #111; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        
+        .calendar-cell {
+            min-height: 90px;
+            padding: 8px;
+            background: #0a0a0a;
+            border: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .calendar-cell:hover {
+            background: #111;
+            border-color: rgba(201,162,39,0.2);
+        }
+        .calendar-cell.booked {
+            background: rgba(201,162,39,0.08);
+            border-left: 2px solid #C9A227;
+        }
+        .calendar-cell.past {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .calendar-cell.today {
+            background: rgba(201,162,39,0.05);
+        }
+        
+        .select-elite {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0a0a0a;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='[w3.org](http://www.w3.org/2000/svg)' width='12' height='12' fill='%23666' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+        .select-elite:focus {
+            border-color: rgba(201,162,39,0.4);
+        }
+        
+        .toast {
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .tab-btn {
+            padding: 12px 24px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #666;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover {
+            color: #999;
+        }
+        .tab-btn.active {
+            color: #C9A227;
+            border-bottom-color: #C9A227;
+        }
+        
+        .status-badge {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .status-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .status-pending {
+            background: rgba(234, 179, 8, 0.15);
+            color: #eab308;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- LOGIN SCREEN -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="loginScreen" class="min-h-screen flex flex-col">
+        
+        <header class="p-6 flex justify-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl font-bold text-white tracking-tight">BUS</span>
+                <span class="text-2xl font-bold text-gold tracking-tight">.STORE</span>
+            </div>
+        </header>
+        
+        <main class="flex-1 flex items-center justify-center p-6">
+            <div class="w-full max-w-5xl">
+                
+                <div class="text-center mb-12">
+                    <p class="text-xs text-zinc-600 uppercase tracking-[0.3em] mb-3">Access</p>
+                    <h1 class="text-4xl font-bold text-white tracking-tight">BUS.STORE</h1>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    
+                    <!-- Partner Login Card -->
+                    <div class="gold-border-gradient rounded-2xl p-8 relative">
+                        <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+                        <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+                        <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+                        <div class="corner-decoration corner-br rounded-br-2xl"></div>
+                        
+                        <div class="text-center mb-8">
+                            <p class="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-2">Elite Dispatch Access</p>
+                            <h2 class="text-xl font-semibold text-white">PARTNER LOGIN</h2>
+                        </div>
+                        
+                        <form id="partnerLoginForm" onsubmit="handlePartnerLogin(event)" class="space-y-4">
+                            <input 
+                                type="text" 
+                                id="partnerId"
+                                placeholder="Partner-ID"
+                                class="input-elite"
+                                required
+                            />
+                            <input 
+                                type="password" 
+                                id="partnerCode"
+                                placeholder="Zugangscode"
+                                class="input-elite"
+                                required
+                            />
+                            <button type="submit" class="btn-gold mt-2">
+                                EINLOGGEN
+                            </button>
+                        </form>
+                        
+                        <p class="text-xs text-zinc-600 text-center mt-6">
+                            Nur für freigeschaltete Busunternehmer.
+                        </p>
+                    </div>
+                    
+                    <!-- Master Access Card -->
+                    <div class="gold-border-gradient rounded-2xl p-8 relative">
+                        <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+                        <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+                        <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+                        <div class="corner-decoration corner-br rounded-br-2xl"></div>
+                        
+                        <div class="text-center mb-8">
+                            <p class="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-2">Administrative Control</p>
+                            <h2 class="text-xl font-semibold text-white">👑 Master Access</h2>
+                        </div>
+                        
+                        <form id="masterLoginForm" onsubmit="handleMasterLogin(event)" class="space-y-4">
+                            <input 
+                                type="password" 
+                                id="masterCode"
+                                placeholder="Master-Code"
+                                class="input-elite"
+                                required
+                            />
+                            <button type="submit" class="btn-outline mt-2">
+                                KONTROLLE ÜBERNEHMEN
+                            </button>
+                        </form>
+                        
+                        <div class="mt-8 pt-6 border-t border-white/5">
+                            <div class="flex items-center gap-3 text-zinc-600">
+                                <span class="text-gold text-lg">👑</span>
+                                <div>
+                                    <p class="text-xs text-zinc-500">System Owner</p>
+                                    <p class="text-sm text-zinc-400">KING TOMEKKK</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+            </div>
+        </main>
+        
+        <footer class="p-6 text-center">
+            <p class="text-xs text-zinc-800">© 2024 BUS.STORE · Elite Dispatch System</p>
+        </footer>
+        
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- DASHBOARD -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="dashboard" class="min-h-screen hidden">
+        
+        <header class="h-16 bg-black-surface border-b border-white/5 flex items-center justify-between px-6 sticky top-0 z-30">
+            <div class="flex items-center gap-3">
+                <span class="text-xl font-bold text-white">BUS</span>
+                <span class="text-xl font-bold text-gold">.STORE</span>
+            </div>
+            
+            <!-- Master Tabs -->
+            <div id="masterTabs" class="hidden">
+                <button onclick="switchTab('dispatch')" class="tab-btn active" data-tab="dispatch">
+                    📅 Disposition
+                </button>
+                <button onclick="switchTab('partners')" class="tab-btn" data-tab="partners">
+                    👥 Partner
+                </button>
+                <button onclick="switchTab('fleet')" class="tab-btn" data-tab="fleet">
+                    🚌 Flotte
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-6">
+                <span id="userBadge" class="text-sm text-zinc-500"></span>
+                <button onclick="logout()" class="text-xs text-zinc-600 hover:text-white transition uppercase tracking-wider">
+                    Logout
+                </button>
+            </div>
+        </header>
+        
+        <!-- DISPATCH TAB (Kalender) -->
+        <div id="tabDispatch" class="tab-content">
+            <div class="flex h-[calc(100vh-4rem)]">
+                
+                <aside class="w-80 bg-black-surface border-r border-white/5 flex flex-col">
+                    
+                    <div class="p-4 border-b border-white/5">
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Bus auswählen</label>
+                        <select id="busSelector" onchange="selectBus(this.value)" class="select-elite">
+                            <option value="">Alle Busse anzeigen</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto scrollbar-thin p-4">
+                        <h2 class="text-xs text-zinc-600 uppercase tracking-wider mb-4">Flotte</h2>
+                        <div id="fleetList" class="space-y-2"></div>
+                    </div>
+                    
+                    <div class="p-4 border-t border-white/5 bg-black-elevated">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs text-zinc-600">Diese Woche</p>
+                                <p id="statWeekBookings" class="text-xl font-bold text-gold">0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-zinc-600">Umsatz</p>
+                                <p id="statWeekRevenue" class="text-xl font-bold text-white">€0</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </aside>
+                
+                <main class="flex-1 flex flex-col overflow-hidden">
+                    
+                    <div class="p-6 border-b border-white/5 flex items-center justify-between bg-black-surface">
+                        <div class="flex items-center gap-4">
+                            <button onclick="changeWeek(-1)" class="w-10 h-10 rounded-lg bg-black-elevated border border-white/5 text-zinc-500 hover:text-white hover:border-white/20 transition flex items-center justify-center">
+                                ←
+                            </button>
+                            <div>
+                                <h1 id="weekDisplay" class="text-lg font-semibold text-white"></h1>
+                                <p id="dateRange" class="text-xs text-zinc-600"></p>
+                            </div>
+                            <button onclick="changeWeek(1)" class="w-10 h-10 rounded-lg bg-black-elevated border border-white/5 text-zinc-500 hover:text-white hover:border-white/20 transition flex items-center justify-center">
+                                →
+                            </button>
+                        </div>
+                        <button onclick="goToToday()" class="text-sm text-gold hover:text-gold-light transition">
+                            Heute
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 overflow-auto scrollbar-thin p-6">
+                        <div id="calendarGrid" class="min-w-[800px]"></div>
+                    </div>
+                    
+                </main>
+                
+            </div>
+        </div>
+        
+        <!-- PARTNERS TAB (Account-Verwaltung) -->
+        <div id="tabPartners" class="tab-content hidden">
+            <div class="max-w-6xl mx-auto p-8">
+                
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Partner-Verwaltung</h1>
+                        <p class="text-zinc-500 mt-1">Accounts erstellen, freischalten und verwalten</p>
+                    </div>
+                    <button onclick="openCreatePartnerModal()" class="btn-gold" style="width: auto; padding: 12px 24px;">
+                        + Neuer Partner
+                    </button>
+                </div>
+                
+                <!-- Partner Stats -->
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="gold-border-gradient rounded-xl p-4">
+                        <p class="text-xs text-zinc-500 uppercase tracking-wider">Gesamt</p>
+                        <p id="partnerStatTotal" class="text-3xl font-bold text-white mt-1">0</p>
+                    </div>
+                    <div class="gold-border-gradient rounded-xl p-4">
+                        <p class="text-xs text-zinc-500 uppercase tracking-wider">Aktiv</p>
+                        <p id="partnerStatActive" class="text-3xl font-bold text-green-400 mt-1">0</p>
+                    </div>
+                    <div class="gold-border-gradient rounded-xl p-4">
+                        <p class="text-xs text-zinc-500 uppercase tracking-wider">Ausstehend</p>
+                        <p id="partnerStatPending" class="text-3xl font-bold text-yellow-400 mt-1">0</p>
+                    </div>
+                    <div class="gold-border-gradient rounded-xl p-4">
+                        <p class="text-xs text-zinc-500 uppercase tracking-wider">Deaktiviert</p>
+                        <p id="partnerStatInactive" class="text-3xl font-bold text-red-400 mt-1">0</p>
+                    </div>
+                </div>
+                
+                <!-- Partner Liste -->
+                <div class="gold-border-gradient rounded-2xl overflow-hidden">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/5">
+                                <th class="text-left p-4 text-xs text-zinc-500 uppercase tracking-wider">Unternehmen</th>
+                                <th class="text-left p-4 text-xs text-zinc-500 uppercase tracking-wider">Partner-ID</th>
+                                <th class="text-left p-4 text-xs text-zinc-500 uppercase tracking-wider">E-Mail</th>
+                                <th class="text-left p-4 text-xs text-zinc-500 uppercase tracking-wider">Status</th>
+                                <th class="text-left p-4 text-xs text-zinc-500 uppercase tracking-wider">Buchungen</th>
+                                <th class="text-right p-4 text-xs text-zinc-500 uppercase tracking-wider">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partnerTableBody">
+                            <!-- Dynamisch gefüllt -->
+                        </tbody>
+                    </table>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- FLEET TAB (Flottenverwaltung) -->
+        <div id="tabFleet" class="tab-content hidden">
+            <div class="max-w-6xl mx-auto p-8">
+                
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Flotten-Verwaltung</h1>
+                        <p class="text-zinc-500 mt-1">Busse hinzufügen und verwalten</p>
+                    </div>
+                    <button onclick="openAddBusModal()" class="btn-gold" style="width: auto; padding: 12px 24px;">
+                        + Neuer Bus
+                    </button>
+                </div>
+                
+                <!-- Fleet Grid -->
+                <div id="fleetGrid" class="grid grid-cols-3 gap-4">
+                    <!-- Dynamisch gefüllt -->
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CREATE PARTNER MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="createPartnerModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="w-full max-w-lg gold-border-gradient rounded-2xl p-8 m-4 relative">
+            <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+            <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+            <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+            <div class="corner-decoration corner-br rounded-br-2xl"></div>
+            
+            <div class="mb-6">
+                <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Account erstellen</p>
+                <h2 class="text-xl font-semibold text-white">Neuer Partner</h2>
+            </div>
+            
+            <form id="createPartnerForm" onsubmit="handleCreatePartner(event)" class="space-y-4">
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Firmenname *</label>
+                    <input 
+                        type="text" 
+                        id="newPartnerCompany"
+                        placeholder="z.B. Schmidt Reisen GmbH"
+                        class="input-elite"
+                        required
+                    />
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Partner-ID *</label>
+                        <input 
+                            type="text" 
+                            id="newPartnerId"
+                            placeholder="z.B. SCHMIDT"
+                            class="input-elite"
+                            style="text-transform: uppercase;"
+                            required
+                        />
+                        <p class="text-xs text-zinc-600 mt-1">Nur Großbuchstaben, keine Leerzeichen</p>
+                    </div>
+                    <div>
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Zugangscode *</label>
+                        <input 
+                            type="text" 
+                            id="newPartnerCode"
+                            placeholder="z.B. schmidt123"
+                            class="input-elite"
+                            required
+                        />
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">E-Mail *</label>
+                    <input 
+                        type="email" 
+                        id="newPartnerEmail"
+                        placeholder="info@beispiel.de"
+                        class="input-elite"
+                        required
+                    />
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Telefon</label>
+                    <input 
+                        type="tel" 
+                        id="newPartnerPhone"
+                        placeholder="+49 30 123456"
+                        class="input-elite"
+                    />
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Status</label>
+                    <select id="newPartnerStatus" class="select-elite">
+                        <option value="pending">⏳ Ausstehend (muss freigeschaltet werden)</option>
+                        <option value="active">✅ Sofort aktiv</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Notizen</label>
+                    <textarea 
+                        id="newPartnerNotes"
+                        placeholder="Interne Anmerkungen..."
+                        rows="2"
+                        class="input-elite resize-none"
+                    ></textarea>
+                </div>
+                
+                <div class="flex gap-4 pt-4">
+                    <button 
+                        type="button"
+                        onclick="closeCreatePartnerModal()"
+                        class="flex-1 py-3 bg-black-elevated border border-white/10 text-zinc-400 rounded-lg hover:text-white hover:border-white/20 transition"
+                    >
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="flex-1 btn-gold">
+                        ERSTELLEN
+                    </button>
+                </div>
+            </form>
+            
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- EDIT PARTNER MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="editPartnerModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="w-full max-w-lg gold-border-gradient rounded-2xl p-8 m-4 relative">
+            <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+            <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+            <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+            <div class="corner-decoration corner-br rounded-br-2xl"></div>
+            
+            <div class="mb-6">
+                <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Account bearbeiten</p>
+                <h2 id="editPartnerTitle" class="text-xl font-semibold text-white">Partner bearbeiten</h2>
+            </div>
+            
+            <form id="editPartnerForm" onsubmit="handleEditPartner(event)" class="space-y-4">
+                <input type="hidden" id="editPartnerId" />
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Firmenname</label>
+                    <input 
+                        type="text" 
+                        id="editPartnerCompany"
+                        class="input-elite"
+                        required
+                    />
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Zugangscode</label>
+                    <input 
+                        type="text" 
+                        id="editPartnerCode"
+                        class="input-elite"
+                        required
+                    />
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">E-Mail</label>
+                    <input 
+                        type="email" 
+                        id="editPartnerEmail"
+                        class="input-elite"
+                        required
+                    />
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Telefon</label>
+                    <input 
+                        type="tel" 
+                        id="editPartnerPhone"
+                        class="input-elite"
+                    />
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Status</label>
+                    <select id="editPartnerStatus" class="select-elite">
+                        <option value="active">✅ Aktiv</option>
+                        <option value="pending">⏳ Ausstehend</option>
+                        <option value="inactive">❌ Deaktiviert</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Notizen</label>
+                    <textarea 
+                        id="editPartnerNotes"
+                        rows="2"
+                        class="input-elite resize-none"
+                    ></textarea>
+                </div>
+                
+                <div class="flex gap-4 pt-4">
+                    <button 
+                        type="button"
+                        onclick="closeEditPartnerModal()"
+                        class="flex-1 py-3 bg-black-elevated border border-white/10 text-zinc-400 rounded-lg hover:text-white hover:border-white/20 transition"
+                    >
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="flex-1 btn-gold">
+                        SPEICHERN
+                    </button>
+                </div>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-white/5">
+                <button 
+                    onclick="deleteCurrentPartner()"
+                    class="w-full py-3 bg-red-900/20 border border-red-900/30 text-red-400 rounded-lg hover:bg-red-900/30 transition text-sm"
+                >
+                    Partner löschen
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- BOOKING MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="bookingModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="w-full max-w-lg gold-border-gradient rounded-2xl p-8 m-4 relative">
+            <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+            <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+            <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+            <div class="corner-decoration corner-br rounded-br-2xl"></div>
+            
+            <div class="mb-6">
+                <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Neue Buchung</p>
+                <h2 id="bookingModalTitle" class="text-xl font-semibold text-white">Fahrt belegen</h2>
+                <p id="bookingModalSubtitle" class="text-sm text-zinc-500 mt-1"></p>
+            </div>
+            
+            <form id="bookingForm" onsubmit="handleBooking(event)" class="space-y-4">
+                <input type="hidden" id="bookingBusId" />
+                <input type="hidden" id="bookingDate" />
+                
+                <!-- Partner-Auswahl (nur für Master) -->
+                <div id="bookingPartnerSelect" class="hidden">
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Partner</label>
+                    <select id="bookingPartner" class="select-elite">
+                        <!-- Dynamisch gefüllt -->
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Von</label>
+                        <input 
+                            type="text" 
+                            id="bookingFrom"
+                            placeholder="Startort"
+                            class="input-elite"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Nach</label>
+                        <input 
+                            type="text"
+                            id="bookingTo" 
+                            placeholder="Zielort"
+                            class="input-elite"
+                            required
+                        />
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Preis</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">€</span>
+                        <input 
+                            type="number" 
+                            id="bookingPrice"
+                            placeholder="0.00"
+                            class="input-elite pl-8"
+                            required
+                            min="0"
+                            step="0.01"
+                        />
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Notizen</label>
+                    <textarea 
+                        id="bookingNotes"
+                        placeholder="Optionale Anmerkungen..."
+                        rows="2"
+                        class="input-elite resize-none"
+                    ></textarea>
+                </div>
+                
+                <div class="flex gap-4 pt-4">
+                    <button 
+                        type="button"
+                        onclick="closeBookingModal()"
+                        class="flex-1 py-3 bg-black-elevated border border-white/10 text-zinc-400 rounded-lg hover:text-white hover:border-white/20 transition"
+                    >
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="flex-1 btn-gold">
+                        BUCHEN
+                    </button>
+                </div>
+            </form>
+            
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- BOOKING DETAIL MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="bookingDetailModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="w-full max-w-lg gold-border-gradient rounded-2xl p-8 m-4 relative">
+            <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+            <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+            <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+            <div class="corner-decoration corner-br rounded-br-2xl"></div>
+            
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Buchungsdetails</p>
+                    <h2 id="detailTitle" class="text-xl font-semibold text-white"></h2>
+                    <p id="detailSubtitle" class="text-sm text-zinc-500 mt-1"></p>
+                </div>
+                <span id="detailStatus" class="status-badge"></span>
+            </div>
+            
+            <div id="detailContent" class="space-y-4 mb-6"></div>
+            
+            <div class="flex gap-4">
+                <button 
+                    onclick="closeBookingDetailModal()"
+                    class="flex-1 py-3 bg-black-elevated border border-white/10 text-zinc-400 rounded-lg hover:text-white hover:border-white/20 transition"
+                >
+                    Schließen
+                </button>
+                <button 
+                    id="cancelBookingBtn"
+                    onclick="cancelCurrentBooking()"
+                    class="flex-1 py-3 bg-red-900/20 border border-red-900/30 text-red-400 rounded-lg hover:bg-red-900/30 transition"
+                >
+                    Stornieren
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ADD BUS MODAL -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="addBusModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="w-full max-w-lg gold-border-gradient rounded-2xl p-8 m-4 relative">
+            <div class="corner-decoration corner-tl rounded-tl-2xl"></div>
+            <div class="corner-decoration corner-tr rounded-tr-2xl"></div>
+            <div class="corner-decoration corner-bl rounded-bl-2xl"></div>
+            <div class="corner-decoration corner-br rounded-br-2xl"></div>
+            
+            <div class="mb-6">
+                <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Flottenverwaltung</p>
+                <h2 class="text-xl font-semibold text-white">🚌 Bus hinzufügen</h2>
+            </div>
+            
+            <form id="addBusForm" onsubmit="handleAddBus(event)" class="space-y-4">
+                <div>
+                    <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Bezeichnung</label>
+                    <input 
+                        type="text" 
+                        id="busName"
+                        placeholder="z.B. Mercedes Tourismo"
+                        class="input-elite"
+                        required
+                    />
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Sitzplätze</label>
+                        <input 
+                            type="number"
+                            id="busSeats" 
+                            placeholder="52"
+                            class="input-elite"
+                            required
+                            min="1"
+                        />
+                    </div>
+                    <div>
+                        <label class="text-xs text-zinc-600 uppercase tracking-wider mb-2 block">Kennzeichen</label>
+                        <input 
+                            type="text"
+                            id="busPlate" 
+                            placeholder="B-BS 1001"
+                            class="input-elite"
+                        />
+                    </div>
+                </div>
+                
+                <div class="flex gap-4 pt-4">
+                    <button 
+                        type="button"
+                        onclick="closeAddBusModal()"
+                        class="flex-1 py-3 bg-black-elevated border border-white/10 text-zinc-400 rounded-lg hover:text-white hover:border-white/20 transition"
+                    >
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="flex-1 btn-gold">
+                        HINZUFÜGEN
+                    </button>
+                </div>
+            </form>
+            
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- TOAST -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 bg-black-elevated border border-white/10 rounded-xl px-6 py-4 shadow-2xl z-50">
+        <div class="flex items-center gap-3">
+            <span id="toastIcon" class="text-lg">✓</span>
+            <p id="toastMessage" class="text-sm text-white"></p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- JAVASCRIPT -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <script>
+        // ══════════════════════════════════════════════════════════
+        // CONFIG & STATE
+        // ══════════════════════════════════════════════════════════
+        
+        const CONFIG = {
+            masterCode: 'KING2024'
+        };
+
+        let state = {
+            currentUser: null,
+            currentWeekStart: getMonday(new Date()),
+            selectedBusId: null,
+            currentBookingId: null,
+            currentPartnerId: null,
+            currentTab: 'dispatch',
+            
+            fleet: JSON.parse(localStorage.getItem('busstore_fleet')) || [
+                { id: 'BUS-001', name: 'Mercedes Tourismo', seats: 52, plate: 'B-BS 1001' },
+                { id: 'BUS-002', name: 'Setra S 516 HD', seats: 48, plate: 'B-BS 1002' },
+                { id: 'BUS-003', name: 'MAN Lion\'s Coach', seats: 44, plate: 'B-BS 1003' }
+            ],
+            
+            bookings: JSON.parse(localStorage.getItem('busstore_bookings')) || [],
+            
+            partners: JSON.parse(localStorage.getItem('busstore_partners')) || []
+        };
+
+        // ══════════════════════════════════════════════════════════
+        // HELPERS
+        // ══════════════════════════════════════════════════════════
+
+        function getMonday(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function formatDateDisplay(date) {
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+        }
+
+        function formatDateLong(date) {
+            return date.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function persist() {
+            localStorage.setItem('busstore_fleet', JSON.stringify(state.fleet));
+            localStorage.setItem('busstore_bookings', JSON.stringify(state.bookings));
+            localStorage.setItem('busstore_partners', JSON.stringify(state.partners));
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            toastMessage.textContent = message;
+            toastIcon.textContent = type === 'error' ? '✕' : '✓';
+            toastIcon.className = `text-lg ${type === 'error' ? 'text-red-400' : 'text-gold'}`;
+            
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function generateCode(length = 8) {
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // AUTH
+        // ══════════════════════════════════════════════════════════
+
+        function handlePartnerLogin(e) {
+            e.preventDefault();
+            const partnerId = document.getElementById('partnerId').value.toUpperCase().trim();
+            const code = document.getElementById('partnerCode').value;
+            
+            const partner = state.partners.find(p => p.id === partnerId && p.code === code);
+            
+            if (!partner) {
+                showToast('Ungültige Zugangsdaten', 'error');
+                return;
+            }
+            
+            if (partner.status === 'pending') {
+                showToast('Account noch nicht freigeschaltet', 'error');
+                return;
+            }
+            
+            if (partner.status === 'inactive') {
+                showToast('Account wurde deaktiviert', 'error');
+                return;
+            }
+            
+            state.currentUser = partner;
+            sessionStorage.setItem('busstore_user', JSON.stringify(partner));
+            showDashboard();
+            showToast(`Willkommen, ${partner.company}!`);
+        }
+
+        function handleMasterLogin(e) {
+            e.preventDefault();
+            const code = document.getElementById('masterCode').value;
+            
+            if (code === CONFIG.masterCode) {
+                state.currentUser = {
+                    id: 'MASTER',
+                    company: 'KING TOMEKKK',
+                    accessLevel: 'master'
+                };
+                sessionStorage.setItem('busstore_user', JSON.stringify(state.currentUser));
+                showDashboard();
+                showToast('👑 Welcome, King!');
+            } else {
+                showToast('Falscher Master-Code', 'error');
+            }
+        }
+
+        function logout() {
+            state.currentUser = null;
+            state.currentTab = 'dispatch';
+            sessionStorage.removeItem('busstore_user');
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('partnerLoginForm').reset();
+            document.getElementById('masterLoginForm').reset();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // DASHBOARD & TABS
+        // ══════════════════════════════════════════════════════════
+
+        function showDashboard() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            
+            const badge = document.getElementById('userBadge');
+            const masterTabs = document.getElementById('masterTabs');
+            
+            if (state.currentUser.accessLevel === 'master') {
+                badge.innerHTML = '<span class="text-gold">👑 KING TOMEKKK</span>';
+                masterTabs.classList.remove('hidden');
+            } else {
+                badge.textContent = state.currentUser.company;
+                masterTabs.classList.add('hidden');
+            }
+            
+            renderBusSelector();
+            renderFleet();
+            renderCalendar();
+            updateStats();
+            
+            if (state.currentUser.accessLevel === 'master') {
+                renderPartnerTable();
+                renderFleetGrid();
+            }
+        }
+
+        function switchTab(tabName) {
+            state.currentTab = tabName;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            
+            // Show/hide tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.remove('hidden');
+            
+            // Refresh data
+            if (tabName === 'partners') renderPartnerTable();
+            if (tabName === 'fleet') renderFleetGrid();
+            if (tabName === 'dispatch') {
+                renderCalendar();
+                renderFleet();
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // PARTNER MANAGEMENT
+        // ══════════════════════════════════════════════════════════
+
+        function renderPartnerTable() {
+            const tbody = document.getElementById('partnerTableBody');
+            
+            // Update stats
+            const total = state.partners.length;
+            const active = state.partners.filter(p => p.status === 'active').length;
+            const pending = state.partners.filter(p => p.status === 'pending').length;
+            const inactive = state.partners.filter(p => p.status === 'inactive').length;
+            
+            document.getElementById('partnerStatTotal').textContent = total;
+            document.getElementById('partnerStatActive').textContent = active;
+            document.getElementById('partnerStatPending').textContent = pending;
+            document.getElementById('partnerStatInactive').textContent = inactive;
+            
+            if (state.partners.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-zinc-500">
+                            Noch keine Partner vorhanden.<br>
+                            <button onclick="openCreatePartnerModal()" class="text-gold hover:text-gold-light mt-2">
+                                Ersten Partner erstellen →
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = state.partners.map(partner => {
+                const bookingCount = state.bookings.filter(b => b.partnerId === partner.id && b.status !== 'cancelled').length;
+                
+                let statusClass = 'status-pending';
+                let statusText = 'Ausstehend';
+                if (partner.status === 'active') {
+                    statusClass = 'status-active';
+                    statusText = 'Aktiv';
+                } else if (partner.status === 'inactive') {
+                    statusClass = 'status-inactive';
+                    statusText = 'Deaktiviert';
+                }
+                
+                return `
+                    <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
+                        <td class="p-4">
+                            <p class="font-medium text-white">${partner.company}</p>
+                            ${partner.phone ? `<p class="text-xs text-zinc-600 mt-1">${partner.phone}</p>` : ''}
+                        </td>
+                        <td class="p-4">
+                            <span class="font-mono text-gold">${partner.id}</span>
+                        </td>
+                        <td class="p-4 text-zinc-400">${partner.email}</td>
+                        <td class="p-4">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td class="p-4 text-zinc-400">${bookingCount}</td>
+                        <td class="p-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                ${partner.status === 'pending' ? `
+                                    <button 
+                                        onclick="activatePartner('${partner.id}')"
+                                        class="px-3 py-1 text-xs bg-green-900/20 text-green-400 border border-green-900/30 rounded hover:bg-green-900/30 transition"
+                                    >
+                                        Freischalten
+                                    </button>
+                                ` : ''}
+                                <button 
+                                    onclick="openEditPartnerModal('${partner.id}')"
+                                    class="px-3 py-1 text-xs bg-black-elevated text-zinc-400 border border-white/10 rounded hover:text-white hover:border-white/20 transition"
+                                >
+                                    Bearbeiten
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openCreatePartnerModal() {
+            document.getElementById('createPartnerForm').reset();
+            document.getElementById('newPartnerCode').value = generateCode();
+            document.getElementById('createPartnerModal').classList.remove('hidden');
+        }
+
+        function closeCreatePartnerModal() {
+            document.getElementById('createPartnerModal').classList.add('hidden');
+        }
+
+        function handleCreatePartner(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('newPartnerId').value.toUpperCase().trim().replace(/\s/g, '');
+            const company = document.getElementById('newPartnerCompany').value.trim();
+            const code = document.getElementById('newPartnerCode').value;
+            const email = document.getElementById('newPartnerEmail').value.trim();
+            const phone = document.getElementById('newPartnerPhone').value.trim();
+            const status = document.getElementById('newPartnerStatus').value;
+            const notes = document.getElementById('newPartnerNotes').value.trim();
+            
+            // Check if ID already exists
+            if (state.partners.find(p => p.id === id)) {
+                showToast('Partner-ID existiert bereits', 'error');
+                return;
+            }
+            
+            const partner = {
+                id,
+                company,
+                code,
+                email,
+                phone: phone || null,
+                status,
+                notes: notes || null,
+                accessLevel: 'partner',
+                createdAt: new Date().toISOString()
+            };
+            
+            state.partners.push(partner);
+            persist();
+            
+            closeCreatePartnerModal();
+            renderPartnerTable();
+            
+            const statusMsg = status === 'active' ? 'und sofort freigeschaltet' : '(noch nicht freigeschaltet)';
+            showToast(`${company} erstellt ${statusMsg}`);
+        }
+
+        function openEditPartnerModal(partnerId) {
+            const partner = state.partners.find(p => p.id === partnerId);
+            if (!partner) return;
+            
+            state.currentPartnerId = partnerId;
+            
+            document.getElementById('editPartnerTitle').textContent = partner.company;
+            document.getElementById('editPartnerId').value = partner.id;
+            document.getElementById('editPartnerCompany').value = partner.company;
+            document.getElementById('editPartnerCode').value = partner.code;
+            document.getElementById('editPartnerEmail').value = partner.email;
+            document.getElementById('editPartnerPhone').value = partner.phone || '';
+            document.getElementById('editPartnerStatus').value = partner.status;
+            document.getElementById('editPartnerNotes').value = partner.notes || '';
+            
+            document.getElementById('editPartnerModal').classList.remove('hidden');
+        }
+
+        function closeEditPartnerModal() {
+            document.getElementById('editPartnerModal').classList.add('hidden');
+            state.currentPartnerId = null;
+        }
+
+        function handleEditPartner(e) {
+            e.preventDefault();
+            
+            const partner = state.partners.find(p => p.id === state.currentPartnerId);
+            if (!partner) return;
+            
+            partner.company = document.getElementById('editPartnerCompany').value.trim();
+            partner.code = document.getElementById('editPartnerCode').value;
+            partner.email = document.getElementById('editPartnerEmail').value.trim();
+            partner.phone = document.getElementById('editPartnerPhone').value.trim() || null;
+            partner.status = document.getElementById('editPartnerStatus').value;
+            partner.notes = document.getElementById('editPartnerNotes').value.trim() || null;
+            
+            persist();
+            closeEditPartnerModal();
+            renderPartnerTable();
+            showToast('Partner aktualisiert');
+        }
+
+        function activatePartner(partnerId) {
+            const partner = state.partners.find(p => p.id === partnerId);
+            if (!partner) return;
+            
+            partner.status = 'active';
+            persist();
+            renderPartnerTable();
+            showToast(`${partner.company} freigeschaltet!`);
+        }
+
+        function deleteCurrentPartner() {
+            if (!state.currentPartnerId) return;
+            
+            const partner = state.partners.find(p => p.id === state.currentPartnerId);
+            if (!partner) return;
+            
+            if (!confirm(`"${partner.company}" wirklich löschen? Alle zugehörigen Buchungen bleiben erhalten.`)) {
+                return;
+            }
+            
+            state.partners = state.partners.filter(p => p.id !== state.currentPartnerId);
+            persist();
+            closeEditPartnerModal();
+            renderPartnerTable();
+            showToast('Partner gelöscht');
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // FLEET MANAGEMENT
+        // ══════════════════════════════════════════════════════════
+
+        function renderBusSelector() {
+            const selector = document.getElementById('busSelector');
+            selector.innerHTML = `
+                <option value="">Alle Busse anzeigen</option>
+                ${state.fleet.map(bus => `
+                    <option value="${bus.id}" ${state.selectedBusId === bus.id ? 'selected' : ''}>
+                        ${bus.name} (${bus.seats}P)
+                    </option>
+                `).join('')}
+            `;
+        }
+
+        function selectBus(busId) {
+            state.selectedBusId = busId || null;
+            renderFleet();
+            renderCalendar();
+        }
+
+        function renderFleet() {
+            const list = document.getElementById('fleetList');
+            
+            list.innerHTML = state.fleet.map(bus => {
+                const isSelected = bus.id === state.selectedBusId;
+                const todayBookings = state.bookings.filter(b => 
+                    b.busId === bus.id && 
+                    b.date === formatDate(new Date()) && 
+                    b.status !== 'cancelled'
+                ).length;
+                
+                return `
+                    <div 
+                        onclick="selectBus('${isSelected ? '' : bus.id}')"
+                        class="p-4 rounded-xl cursor-pointer transition ${
+                            isSelected 
+                                ? 'bg-gold/10 border border-gold/30' 
+                                : 'bg-black-elevated border border-white/5 hover:border-white/10'
+                        }"
+                    >
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium ${isSelected ? 'text-gold' : 'text-white'}">${bus.name}</p>
+                                <p class="text-xs text-zinc-600 mt-1">${bus.plate || bus.id}</p>
+                            </div>
+                            <span class="text-xs text-zinc-500 bg-black-surface px-2 py-1 rounded">${bus.seats}P</span>
+                        </div>
+                        ${todayBookings > 0 ? `
+                            <div class="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-gold animate-pulse"></span>
+                                <span class="text-xs text-gold">Heute belegt</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFleetGrid() {
+            const grid = document.getElementById('fleetGrid');
+            
+            grid.innerHTML = state.fleet.map(bus => {
+                const totalBookings = state.bookings.filter(b => b.busId === bus.id && b.status !== 'cancelled').length;
+                const revenue = state.bookings
+                    .filter(b => b.busId === bus.id && b.status !== 'cancelled')
+                    .reduce((sum, b) => sum + b.price, 0);
+                
+                return `
+                    <div class="gold-border-gradient rounded-xl p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 class="font-semibold text-white">${bus.name}</h3>
+                                <p class="text-sm text-zinc-500 font-mono">${bus.plate}</p>
+                            </div>
+                            <span class="text-2xl">🚌</span>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-zinc-500">Sitzplätze</span>
+                                <span class="text-white">${bus.seats}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-zinc-500">Buchungen</span>
+                                <span class="text-white">${totalBookings}</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-zinc-500">Umsatz</span>
+                                <span class="text-gold font-medium">€${revenue.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <button 
+                            onclick="deleteBus('${bus.id}')"
+                            class="w-full py-2 text-xs text-red-400 border border-red-900/30 rounded-lg hover:bg-red-900/20 transition"
+                        >
+                            Entfernen
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openAddBusModal() {
+            document.getElementById('addBusForm').reset();
+            document.getElementById('addBusModal').classList.remove('hidden');
+        }
+
+        function closeAddBusModal() {
+            document.getElementById('addBusModal').classList.add('hidden');
+        }
+
+        function handleAddBus(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('busName').value.trim();
+            const seats = parseInt(document.getElementById('busSeats').value);
+            const plate = document.getElementById('busPlate').value.trim();
+            
+            const bus = {
+                id: `BUS-${Date.now()}`,
+                name,
+                seats,
+                plate: plate || `BUS-${state.fleet.length + 1}`
+            };
+            
+            state.fleet.push(bus);
+            persist();
+            
+            closeAddBusModal();
+            renderBusSelector();
+            renderFleet();
+            renderFleetGrid();
+            renderCalendar();
+            
+            showToast(`${name} hinzugefügt`);
+        }
+
+        function deleteBus(busId) {
+            const bus = state.fleet.find(b => b.id === busId);
+            if (!bus) return;
+            
+            const hasBookings = state.bookings.some(b => b.busId === busId && b.status !== 'cancelled');
+            
+            if (hasBookings) {
+                if (!confirm(`"${bus.name}" hat aktive Buchungen. Trotzdem löschen?`)) {
+                    return;
+                }
+            }
+            
+            state.fleet = state.fleet.filter(b => b.id !== busId);
+            persist();
+            
+            renderBusSelector();
+            renderFleet();
+            renderFleetGrid();
+            renderCalendar();
+            
+            showToast(`${bus.name} entfernt`);
+        }
+
+        function updateStats() {
+            const weekStart = state.currentWeekStart;
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+            
+            let weekBookings;
+            if (state.currentUser.accessLevel === 'master') {
+                weekBookings = state.bookings.filter(b => {
+                    const d = new Date(b.date);
+                    return d >= weekStart && d < weekEnd && b.status !== 'cancelled';
+                });
+            } else {
+                weekBookings = state.bookings.filter(b => {
+                    const d = new Date(b.date);
+                    return d >= weekStart && d < weekEnd && b.status !== 'cancelled' && b.partnerId === state.currentUser.id;
+                });
+            }
+            
+            const totalRevenue = weekBookings.reduce((sum, b) => sum + b.price, 0);
+            
+            document.getElementById('statWeekBookings').textContent = weekBookings.length;
+            document.getElementById('statWeekRevenue').textContent = `€${totalRevenue.toLocaleString()}`;
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // CALENDAR
+        // ══════════════════════════════════════════════════════════
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const days = [];
+            const today = formatDate(new Date());
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(state.currentWeekStart);
+                date.setDate(date.getDate() + i);
+                days.push(date);
+            }
+            
+            const weekNum = getWeekNumber(state.currentWeekStart);
+            const monthName = state.currentWeekStart.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+            document.getElementById('weekDisplay').textContent = `Kalenderwoche ${weekNum}`;
+            document.getElementById('dateRange').textContent = `${formatDateDisplay(days[0])} - ${formatDateDisplay(days[6])} · ${monthName}`;
+            
+            const busesToShow = state.selectedBusId 
+                ? state.fleet.filter(b => b.id === state.selectedBusId)
+                : state.fleet;
+            
+            let html = `
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="w-48 p-3 text-left text-xs text-zinc-600 uppercase tracking-wider bg-black-surface border border-white/5">Bus</th>
+                            ${days.map(date => {
+                                const isToday = formatDate(date) === today;
+                                return `
+                                    <th class="p-3 text-center bg-black-surface border border-white/5 ${isToday ? 'bg-gold/5' : ''}">
+                                        <p class="text-xs text-zinc-600 uppercase">${date.toLocaleDateString('de-DE', { weekday: 'short' })}</p>
+                                        <p class="text-xl font-bold mt-1 ${isToday ? 'text-gold' : 'text-white'}">${date.getDate()}</p>
+                                    </th>
+                                `;
+                            }).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            busesToShow.forEach(bus => {
+                html += `
+                    <tr>
+                        <td class="p-3 bg-black-surface border border-white/5">
+                            <p class="font-medium text-white text-sm">${bus.name}</p>
+                            <p class="text-xs text-zinc-600">${bus.seats} Sitze · ${bus.plate}</p>
+                        </td>
+                        ${days.map(date => {
+                            const dateStr = formatDate(date);
+                            const isToday = dateStr === today;
+                            const isPast = new Date(dateStr) < new Date(today);
+                            const booking = state.bookings.find(b => 
+                                b.busId === bus.id && 
+                                b.date === dateStr && 
+                                b.status !== 'cancelled'
+                            );
+                            
+                            // Partner sieht nur eigene Buchungen als klickbar
+                            const canViewBooking = state.currentUser.accessLevel === 'master' || 
+                                (booking && booking.partnerId === state.currentUser.id);
+                            
+                            if (booking) {
+                                return `
+                                    <td 
+                                        onclick="${canViewBooking ? `openBookingDetail('${booking.id}')` : ''}"
+                                        class="calendar-cell booked ${isToday ? 'today' : ''} ${canViewBooking ? '' : 'cursor-default'}"
+                                    >
+                                        <p class="text-sm font-medium text-gold truncate">${booking.route.from}</p>
+                                        <p class="text-xs text-zinc-500 truncate">→ ${booking.route.to}</p>
+                                        <p class="text-sm font-bold text-white mt-2">€${booking.price.toLocaleString()}</p>
+                                        ${state.currentUser.accessLevel === 'master' ? `
+                                            <p class="text-xs text-zinc-600 mt-1">${booking.partnerName}</p>
+                                        ` : ''}
+                                    </td>
+                                `;
+                            }
+                            
+                            return `
+                                <td 
+                                    onclick="${isPast ? '' : `openBookingModal('${bus.id}', '${dateStr}')`}"
+                                    class="calendar-cell ${isPast ? 'past' : ''} ${isToday ? 'today' : ''}"
+                                >
+                                    ${!isPast ? '<span class="text-xs text-zinc-700">+ Belegen</span>' : ''}
+                                </td>
+                            `;
+                        }).join('')}
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            grid.innerHTML = html;
+            
+            updateStats();
+        }
+
+        function changeWeek(delta) {
+            state.currentWeekStart.setDate(state.currentWeekStart.getDate() + (delta * 7));
+            renderCalendar();
+        }
+
+        function goToToday() {
+            state.currentWeekStart = getMonday(new Date());
+            renderCalendar();
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // BOOKING
+        // ══════════════════════════════════════════════════════════
+
+        function openBookingModal(busId, date) {
+            const bus = state.fleet.find(b => b.id === busId);
+            const dateObj = new Date(date);
+            
+            document.getElementById('bookingBusId').value = busId;
+            document.getElementById('bookingDate').value = date;
+            document.getElementById('bookingModalSubtitle').textContent = 
+                `${bus.name} · ${formatDateLong(dateObj)}`;
+            
+            document.getElementById('bookingForm').reset();
+            document.getElementById('bookingBusId').value = busId;
+            document.getElementById('bookingDate').value = date;
+            
+            // Master kann Partner auswählen
+            const partnerSelect = document.getElementById('bookingPartnerSelect');
+            const partnerDropdown = document.getElementById('bookingPartner');
+            
+            if (state.currentUser.accessLevel === 'master') {
+                const activePartners = state.partners.filter(p => p.status === 'active');
+                partnerDropdown.innerHTML = `
+                    <option value="MASTER">👑 KING TOMEKKK (selbst)</option>
+                    ${activePartners.map(p => `
+                        <option value="${p.id}">${p.company}</option>
+                    `).join('')}
+                `;
+                partnerSelect.classList.remove('hidden');
+            } else {
+                partnerSelect.classList.add('hidden');
+            }
+            
+            document.getElementById('bookingModal').classList.remove('hidden');
+        }
+
+        function closeBookingModal() {
+            document.getElementById('bookingModal').classList.add('hidden');
+        }
+
+        function handleBooking(e) {
+            e.preventDefault();
+            
+            const busId = document.getElementById('bookingBusId').value;
+            const date = document.getElementById('bookingDate').value;
+            const from = document.getElementById('bookingFrom').value.trim();
+            const to = document.getElementById('bookingTo').value.trim();
+            const price = parseFloat(document.getElementById('bookingPrice').value);
+            const notes = document.getElementById('bookingNotes').value.trim();
+            
+            const conflict = state.bookings.find(b => 
+                b.busId === busId && 
+                b.date === date && 
+                b.status !== 'cancelled'
+            );
+            
+            if (conflict) {
+                showToast('Bus ist an diesem Tag bereits belegt', 'error');
+                return;
+            }
+            
+            let partnerId, partnerName;
+            
+            if (state.currentUser.accessLevel === 'master') {
+                partnerId = document.getElementById('bookingPartner').value;
+                if (partnerId === 'MASTER') {
+                    partnerName = 'KING TOMEKKK';
+                } else {
+                    const partner = state.partners.find(p => p.id === partnerId);
+                    partnerName = partner ? partner.company : 'Unbekannt';
+                }
+            } else {
+                partnerId = state.currentUser.id;
+                partnerName = state.currentUser.company;
+            }
+            
+            const booking = {
+                id: `BK-${Date.now()}`,
+                busId,
+                date,
+                route: { from, to },
+                price,
+                notes: notes || null,
+                partnerId,
+                partnerName,
+                createdAt: new Date().toISOString(),
+                status: 'confirmed'
+            };
+            
+            state.bookings.push(booking);
+            persist();
+            
+            closeBookingModal();
+            renderCalendar();
+            renderFleet();
+            
+            showToast(`Fahrt gebucht: ${from} → ${to}`);
+        }
+
+        function openBookingDetail(bookingId) {
+            const booking = state.bookings.find(b => b.id === bookingId);
+            if (!booking) return;
+            
+            state.currentBookingId = bookingId;
+            
+            const bus = state.fleet.find(b => b.id === booking.busId);
+            const dateObj = new Date(booking.date);
+            
+            document.getElementById('detailTitle').textContent = `${booking.route.from} → ${booking.route.to}`;
+            document.getElementById('detailSubtitle').textContent = 
+                `${bus?.name || 'Bus'} · ${formatDateLong(dateObj)}`;
+            
+            const statusEl = document.getElementById('detailStatus');
+            statusEl.textContent = booking.status === 'confirmed' ? 'Bestätigt' : 'Storniert';
+            statusEl.className = `status-badge ${booking.status === 'confirmed' ? 'status-active' : 'status-inactive'}`;
+            
+            document.getElementById('detailContent').innerHTML = `
+                <div class="bg-black-elevated rounded-xl p-4 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-zinc-500 text-sm">Preis</span>
+                        <span class="text-2xl font-bold text-gold">€${booking.price.toLocaleString()}</span>
+                    </div>
+                    <div class="h-px bg-white/5"></div>
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500 text-sm">Partner</span>
+                        <span class="text-white">${booking.partnerName}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-zinc-500 text-sm">Buchungs-ID</span>
+                        <span class="text-zinc-400 font-mono text-sm">${booking.id}</span>
+                    </div>
+                    ${booking.notes ? `
+                        <div class="h-px bg-white/5"></div>
+                        <div>
+                            <span class="text-zinc-500 text-sm block mb-2">Notizen</span>
+                            <p class="text-white text-sm">${booking.notes}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            const cancelBtn = document.getElementById('cancelBookingBtn');
+            const canCancel = booking.status === 'confirmed' && 
+                (state.currentUser.accessLevel === 'master' || booking.partnerId === state.currentUser.id);
+            cancelBtn.style.display = canCancel ? 'block' : 'none';
+            
+            document.getElementById('bookingDetailModal').classList.remove('hidden');
+        }
+
+        function closeBookingDetailModal() {
+            document.getElementById('bookingDetailModal').classList.add('hidden');
+            state.currentBookingId = null;
+        }
+
+        function cancelCurrentBooking() {
+            if (!state.currentBookingId) return;
+            
+            const booking = state.bookings.find(b => b.id === state.currentBookingId);
+            if (booking) {
+                booking.status = 'cancelled';
+                persist();
+                closeBookingDetailModal();
+                renderCalendar();
+                renderFleet();
+                showToast('Buchung storniert');
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════
+        // INIT
+        // ══════════════════════════════════════════════════════════
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedUser = sessionStorage.getItem('busstore_user');
+            if (savedUser) {
+                state.currentUser = JSON.parse(savedUser);
+                showDashboard();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeBookingModal();
+                closeBookingDetailModal();
+                closeAddBusModal();
+                closeCreatePartnerModal();
+                closeEditPartnerModal();
+            }
+        });
+
+        // Auto-uppercase Partner-ID input
+        document.getElementById('newPartnerId')?.addEventListener('input', function() {
+            this.value = this.value.toUpperCase().replace(/\s/g, '');
+        });
+    </script>
+
+</body>
+</html>
