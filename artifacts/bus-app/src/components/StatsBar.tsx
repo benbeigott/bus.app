@@ -11,10 +11,11 @@ export default function StatsBar({ vehicles, bookings }: Props) {
   const totalRevenue = bookings.filter(b => b.status === "confirmed").reduce((sum, b) => sum + b.price, 0);
   const pendingBookings = bookings.filter(b => b.status === "pending").length;
   const inRepair = vehicles.filter(v => v.status === "repair").length;
+  const blocked = vehicles.filter(v => v.status === "blocked").length;
   const totalSeats = vehicles.reduce((sum, v) => sum + v.seats, 0);
 
   const stats = [
-    { label: "Fahrzeuge aktiv", value: `${activeVehicles}/${vehicles.length}`, sub: `${inRepair} in Werkstatt`, color: "text-green-400" },
+    { label: "Fahrzeuge aktiv", value: `${activeVehicles}/${vehicles.length}`, sub: `${inRepair} Werkstatt · ${blocked} gesperrt`, color: "text-green-400" },
     { label: "Bestätigte Buchungen", value: confirmedBookings, sub: `${pendingBookings} ausstehend`, color: "text-yellow-400" },
     { label: "Gesamtumsatz", value: `€ ${totalRevenue.toLocaleString("de-DE")}`, sub: "Bestätigte Fahrten", color: "text-yellow-500" },
     { label: "Sitzplätze gesamt", value: totalSeats, sub: "Gesamtkapazität Flotte", color: "text-blue-400" },

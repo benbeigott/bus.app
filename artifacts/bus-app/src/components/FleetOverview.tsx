@@ -13,12 +13,14 @@ const STATUS_LABELS: Record<Vehicle["status"], string> = {
   active: "Aktiv",
   standby: "Bereit",
   repair: "Werkstatt",
+  blocked: "Gesperrt",
 };
 
 const STATUS_BADGE: Record<Vehicle["status"], string> = {
   active: "badge-active",
   standby: "badge-standby",
   repair: "badge-repair",
+  blocked: "bg-zinc-800 text-zinc-500 border border-zinc-700",
 };
 
 export default function FleetOverview({ vehicles, bookings, isMaster, onUpdateVehicle, expanded }: Props) {
@@ -37,7 +39,8 @@ export default function FleetOverview({ vehicles, bookings, isMaster, onUpdateVe
 
   function toggleStatus(v: Vehicle) {
     if (!isMaster) return;
-    const next: Vehicle["status"] = v.status === "active" ? "standby" : v.status === "standby" ? "active" : "standby";
+    if (v.status === "blocked" || v.status === "repair") return;
+    const next: Vehicle["status"] = v.status === "active" ? "standby" : "active";
     onUpdateVehicle({ ...v, status: next });
   }
 

@@ -1,3 +1,25 @@
+# bus.app — Fleet Operations Platform
+
+## Overview
+
+Elite fleet management platform for bus operators pooling their fleets. Dark gold design. Built with React + Vite.
+
+## Artifacts
+- `artifacts/bus-app` — Main web app at `/`
+- `artifacts/api-server` — Express API at `/api`
+
+## Access
+- **Partner Login**: Partner-ID + Code (e.g. MZ001 / bus2026)
+- **Master Access**: Hidden — 5 quick taps on the status dot (top-left), then enter master code (`master2026`)
+
+## Features
+- Live clock & date in header/login
+- Live fuel prices (Diesel, Benzin, AdBlue, LNG) refreshing every 30s
+- Booking calendar (28-day Gantt-style dispatch planner for master)
+- Fleet overview with fuel levels, driver assignment
+- Booking table with filters and confirm/cancel actions
+- DispatchPlanner: Master-only tab with 28-day timeline, per-vehicle block/unblock button
+
 # Workspace
 
 ## Overview

@@ -4,7 +4,7 @@ export interface Vehicle {
   plate: string;
   seats: number;
   type: "Reisebus" | "Stadtbus" | "Minibus" | "Doppeldecker";
-  status: "active" | "standby" | "repair";
+  status: "active" | "standby" | "repair" | "blocked";
   driver?: string;
   lastService: string;
   fuelLevel: number;
