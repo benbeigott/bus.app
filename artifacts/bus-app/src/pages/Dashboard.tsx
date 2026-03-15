@@ -22,7 +22,7 @@ type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung" | "verwal
 
 export default function Dashboard({ session, onLogout, partners, onPartnersChange }: Props) {
   const { time, dateStr } = useLiveClock();
-  const { prices, lastUpdate } = useFuelPrices();
+  const { prices, lastUpdate, stationName, isLive } = useFuelPrices();
   const [activeTab, setActiveTab] = useState<Tab>(session.role === "master" ? "planung" : "dashboard");
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
@@ -157,7 +157,7 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
                 <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={isMaster} onUpdateVehicle={updateVehicle} />
               </div>
               <div>
-                <FuelWidget prices={prices} lastUpdate={lastUpdate} />
+                <FuelWidget prices={prices} lastUpdate={lastUpdate} stationName={stationName} isLive={isLive} />
               </div>
             </div>
             <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={setBookings} limit={8} title="Letzte Buchungen" />
