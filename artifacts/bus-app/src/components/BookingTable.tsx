@@ -123,12 +123,14 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
               </button>
             ))}
           </div>
-          <button
-            onClick={openNew}
-            className="text-xs bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black font-semibold px-4 py-1.5 rounded-lg hover:shadow-[0_4px_20px_rgba(201,162,39,0.25)] transition-all"
-          >
-            + Neue Buchung
-          </button>
+          {isMaster && (
+            <button
+              onClick={openNew}
+              className="text-xs bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black font-semibold px-4 py-1.5 rounded-lg hover:shadow-[0_4px_20px_rgba(201,162,39,0.25)] transition-all"
+            >
+              + Neue Buchung
+            </button>
+          )}
         </div>
       </div>
 
@@ -140,7 +142,7 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
               <th className="text-left pb-3 font-medium">Fahrzeug</th>
               <th className="text-left pb-3 font-medium">Route</th>
               <th className="text-left pb-3 font-medium hidden md:table-cell">Kunde</th>
-              <th className="text-right pb-3 font-medium hidden sm:table-cell">Preis</th>
+              {isMaster && <th className="text-right pb-3 font-medium hidden sm:table-cell">Preis</th>}
               <th className="text-center pb-3 font-medium">Status</th>
               {isMaster && <th className="text-right pb-3 font-medium">Aktionen</th>}
             </tr>
@@ -161,11 +163,13 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
                 <td className="py-3 pr-4 hidden md:table-cell">
                   <span className="text-zinc-400 text-xs">{b.customer}</span>
                 </td>
-                <td className="py-3 pr-4 text-right hidden sm:table-cell">
-                  <span className="text-yellow-500 font-semibold tabular-nums text-xs">
-                    € {b.price.toLocaleString("de-DE")}
-                  </span>
-                </td>
+                {isMaster && (
+                  <td className="py-3 pr-4 text-right hidden sm:table-cell">
+                    <span className="text-yellow-500 font-semibold tabular-nums text-xs">
+                      € {b.price.toLocaleString("de-DE")}
+                    </span>
+                  </td>
+                )}
                 <td className="py-3 text-center">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[b.status]}`}>
                     {STATUS_LABELS[b.status]}
