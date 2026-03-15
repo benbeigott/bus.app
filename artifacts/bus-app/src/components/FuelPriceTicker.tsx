@@ -1,39 +1,49 @@
 import { type FuelPrice } from "@/lib/data";
 
-function SkullPumpIcon() {
+// ⛽ + ☠️ combined: red fuel pump with skull replacing the center droplet
+function SkullPumpIcon({ size = 40 }: { size?: number }) {
   return (
-    <svg width="36" height="44" viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Pump body */}
-      <rect x="2" y="22" width="22" height="22" rx="3" fill="#C9A227" />
-      {/* Pump screen */}
-      <rect x="5.5" y="25.5" width="15" height="9" rx="1.5" fill="#000" opacity="0.55" />
-      <rect x="8" y="28" width="10" height="1.5" rx="0.75" fill="#C9A227" opacity="0.5" />
-      <rect x="8" y="31" width="6" height="1.5" rx="0.75" fill="#C9A227" opacity="0.35" />
-      {/* Pump base */}
-      <rect x="2" y="38" width="22" height="6" rx="0" fill="#A07B15" />
-      <rect x="2" y="41" width="22" height="3" rx="0" fill="#8A6912" />
-      {/* Nozzle arm */}
-      <rect x="24" y="24" width="4" height="12" rx="2" fill="#C9A227" />
-      <path d="M26 36 Q32 36 32 42 L32 46" stroke="#C9A227" strokeWidth="3" strokeLinecap="round" fill="none" />
-      <rect x="28" y="43" width="7" height="3" rx="1.5" fill="#C9A227" />
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* === PUMP BODY (red, like ⛽ emoji) === */}
+      {/* Main body */}
+      <rect x="6" y="20" width="36" height="40" rx="4" fill="#CC2200" />
+      {/* Top roof piece */}
+      <rect x="4" y="16" width="40" height="8" rx="3" fill="#AA1800" />
+      {/* Body shading right side */}
+      <rect x="34" y="20" width="8" height="40" rx="0" fill="#AA1800" opacity="0.5" />
+
+      {/* === SKULL (☠️ style) replacing the center panel === */}
+      {/* Panel background */}
+      <rect x="11" y="25" width="26" height="22" rx="3" fill="#1a0a00" />
       {/* Skull cranium */}
-      <ellipse cx="13" cy="13" rx="11" ry="10" fill="#C9A227" />
-      {/* Eye sockets */}
-      <ellipse cx="8.5"  cy="13" rx="3.2" ry="3.2" fill="#1a1000" />
-      <ellipse cx="17.5" cy="13" rx="3.2" ry="3.2" fill="#1a1000" />
-      {/* $ eyes */}
-      <text x="6.2"  y="15.8" fontSize="5" fill="#C9A227" fontWeight="900" fontFamily="Arial, sans-serif">$</text>
-      <text x="15.2" y="15.8" fontSize="5" fill="#C9A227" fontWeight="900" fontFamily="Arial, sans-serif">$</text>
-      {/* Jaw */}
-      <rect x="4" y="20" width="18" height="5" rx="2" fill="#C9A227" />
-      {/* Teeth */}
-      <rect x="6"    y="21" width="3" height="4" rx="1" fill="#1a1000" />
-      <rect x="10.5" y="21" width="3" height="4" rx="1" fill="#1a1000" />
-      <rect x="15"   y="21" width="3" height="4" rx="1" fill="#1a1000" />
-      {/* Smile */}
-      <path d="M5 20 Q13 24.5 21 20" stroke="#1a1000" strokeWidth="1.2" fill="none" />
-      {/* Nose */}
-      <path d="M11 17 L13 19.5 L15 17" stroke="#1a1000" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
+      <ellipse cx="24" cy="33" rx="9" ry="8" fill="white" />
+      {/* Left eye socket */}
+      <ellipse cx="20.5" cy="33" rx="2.8" ry="3" fill="#1a0a00" />
+      {/* Right eye socket */}
+      <ellipse cx="27.5" cy="33" rx="2.8" ry="3" fill="#1a0a00" />
+      {/* Nose cavity */}
+      <path d="M22.5 37 L24 39.5 L25.5 37 Z" fill="#1a0a00" />
+      {/* Jaw / lower skull */}
+      <rect x="16" y="39" width="16" height="6" rx="2" fill="white" />
+      {/* Teeth gaps */}
+      <rect x="18.5" y="39.5" width="2.5" height="5" rx="0.5" fill="#1a0a00" />
+      <rect x="22.5" y="39.5" width="2.5" height="5" rx="0.5" fill="#1a0a00" />
+      <rect x="26.5" y="39.5" width="2.5" height="5" rx="0.5" fill="#1a0a00" />
+
+      {/* === NOZZLE ARM (right side) === */}
+      {/* Vertical pipe */}
+      <rect x="42" y="18" width="6" height="16" rx="3" fill="#CC2200" />
+      {/* Horizontal hose */}
+      <path d="M45 34 Q52 34 52 44 L52 52" stroke="#882200" strokeWidth="5" strokeLinecap="round" fill="none"/>
+      {/* Nozzle tip */}
+      <rect x="48" y="50" width="8" height="5" rx="2.5" fill="#CC2200" />
+      <rect x="54" y="48" width="4" height="9" rx="2" fill="#AA1800" />
+
+      {/* === PUMP BASE === */}
+      <rect x="6" y="56" width="36" height="6" rx="2" fill="#881500" />
+
+      {/* === SHINE highlight === */}
+      <rect x="10" y="22" width="4" height="14" rx="2" fill="white" opacity="0.15" />
     </svg>
   );
 }
@@ -50,8 +60,8 @@ export default function FuelPriceTicker({ prices, isLive }: Props) {
   if (!diesel && !e5) return null;
 
   return (
-    <div className="flex items-center gap-2 border border-yellow-500/15 bg-yellow-500/[0.04] rounded-xl px-3 py-1.5">
-      <SkullPumpIcon />
+    <div className="flex items-center gap-2 border border-red-900/30 bg-red-950/10 rounded-xl px-3 py-1.5">
+      <SkullPumpIcon size={40} />
       <div className="space-y-0.5">
         {diesel && (
           <div className="flex items-center gap-1.5">
