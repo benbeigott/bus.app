@@ -6,10 +6,12 @@ import FleetOverview from "@/components/FleetOverview";
 import BookingCalendar from "@/components/BookingCalendar";
 import BookingTable from "@/components/BookingTable";
 import FuelWidget from "@/components/FuelWidget";
+import FuelAdvisor from "@/components/FuelAdvisor";
 import StatsBar from "@/components/StatsBar";
 import DispatchPlanner from "@/components/DispatchPlanner";
 import AdminPanel from "@/components/AdminPanel";
 import { INITIAL_VEHICLES, INITIAL_BOOKINGS, INITIAL_DRIVERS, type Vehicle, type Booking, type Driver } from "@/lib/data";
+import { DEFAULT_DEPOT, type DepotLocation } from "@/lib/depots";
 
 interface Props {
   session: UserSession;
@@ -22,7 +24,8 @@ type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung" | "verwal
 
 export default function Dashboard({ session, onLogout, partners, onPartnersChange }: Props) {
   const { time, dateStr } = useLiveClock();
-  const { prices, lastUpdate, stationName, isLive } = useFuelPrices();
+  const [depot, setDepot] = useState<DepotLocation>(DEFAULT_DEPOT);
+  const { prices, stations, fuelTip, lastUpdate, stationName, isLive } = useFuelPrices(depot);
   const [activeTab, setActiveTab] = useState<Tab>(session.role === "master" ? "planung" : "dashboard");
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
@@ -160,6 +163,9 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
                 <FuelWidget prices={prices} lastUpdate={lastUpdate} stationName={stationName} isLive={isLive} />
               </div>
             </div>
+            <div>
+              <FuelAdvisor fuelTip={fuelTip} stations={stations} depot={depot} isLive={isLive} />
+            </div>
             <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={setBookings} limit={8} title="Letzte Buchungen" />
           </div>
         )}
@@ -184,6 +190,8 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
               vehicles={vehicles}
               partners={partners}
               drivers={drivers}
+              depot={depot}
+              onDepotChange={setDepot}
               onAddVehicle={handleAddVehicle}
               onDeleteVehicle={handleDeleteVehicle}
               onAddPartner={handleAddPartner}
