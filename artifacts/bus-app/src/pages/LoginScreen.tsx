@@ -1,19 +1,19 @@
 import { useState, useRef } from "react";
-import { type UserSession } from "@/App";
-import { PARTNERS, MASTER_CODE } from "@/lib/data";
+import { type UserSession, type Partner } from "@/App";
+import { MASTER_CODE } from "@/lib/data";
 import { useLiveClock } from "@/hooks/useLiveClock";
 
 interface Props {
   onLogin: (session: UserSession) => void;
+  partners: Partner[];
 }
 
-export default function LoginScreen({ onLogin }: Props) {
+export default function LoginScreen({ onLogin, partners }: Props) {
   const { time, dateStr } = useLiveClock();
   const [partnerId, setPartnerId] = useState("");
   const [partnerCode, setPartnerCode] = useState("");
   const [error, setError] = useState("");
 
-  // Hidden master access — 5 quick taps on the status dot
   const [masterOverlay, setMasterOverlay] = useState(false);
   const [masterCode, setMasterCode] = useState("");
   const [masterError, setMasterError] = useState("");
@@ -35,7 +35,7 @@ export default function LoginScreen({ onLogin }: Props) {
   function handlePartnerLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const found = PARTNERS.find(
+    const found = partners.find(
       (p) => p.id === partnerId.trim().toUpperCase() && p.code === partnerCode
     );
     if (found) {
@@ -59,10 +59,8 @@ export default function LoginScreen({ onLogin }: Props) {
 
   return (
     <div className="min-h-screen bg-black flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Top status bar */}
       <div className="flex justify-between items-center px-8 py-4 border-b border-white/5">
         <div className="flex items-center gap-2">
-          {/* Secret tap target — visually just a status dot */}
           <button
             onClick={handleDotTap}
             className="w-2 h-2 rounded-full bg-yellow-500 pulse-gold focus:outline-none"
@@ -78,9 +76,7 @@ export default function LoginScreen({ onLogin }: Props) {
         </div>
       </div>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        {/* Logo */}
         <div className="text-center mb-14">
           <p className="text-xs text-zinc-600 uppercase tracking-[0.35em] mb-3">Fleet Operations Platform</p>
           <div className="flex items-center justify-center gap-1">
@@ -90,7 +86,6 @@ export default function LoginScreen({ onLogin }: Props) {
           <p className="text-xs text-zinc-600 uppercase tracking-[0.25em] mt-3">Das Mutterschiff der Flottenplanung</p>
         </div>
 
-        {/* Single partner login card */}
         <div className="w-full max-w-sm">
           <div className="gold-border rounded-2xl p-8 relative gold-glow">
             <div className="corner-tl" /><div className="corner-tr" />
@@ -137,16 +132,12 @@ export default function LoginScreen({ onLogin }: Props) {
         <p className="text-xs text-zinc-800">bus.app</p>
       </footer>
 
-      {/* Hidden master overlay — appears only after secret tap sequence */}
       {masterOverlay && (
         <div
           className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center p-4"
           onClick={e => { if (e.target === e.currentTarget) { setMasterOverlay(false); } }}
         >
-          <div
-            className="w-full max-w-xs"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="w-full max-w-xs" onClick={e => e.stopPropagation()}>
             <form onSubmit={handleMasterLogin} className="space-y-4">
               <input
                 type="password"
@@ -157,9 +148,7 @@ export default function LoginScreen({ onLogin }: Props) {
                 autoFocus
                 autoComplete="off"
               />
-              {masterError && (
-                <p className="text-xs text-red-400 text-center">{masterError}</p>
-              )}
+              {masterError && <p className="text-xs text-red-400 text-center">{masterError}</p>}
               <button
                 type="submit"
                 className="w-full py-3 border border-white/[0.06] text-zinc-700 text-xs rounded-lg hover:border-yellow-500/20 hover:text-zinc-500 transition-all tracking-widest"
