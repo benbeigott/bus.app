@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm --filter @workspace/bus-app run build",
-  "outputDirectory": "public",
-  "installCommand": "pnpm install"
-}
+    "buildCommand": "pnpm --filter @workspace/bus-app run build",
+    "outputDirectory": "artifacts/bus-app/dist/public",
+    "installCommand": "pnpm install"
+  }
