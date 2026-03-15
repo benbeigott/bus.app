@@ -15,6 +15,16 @@ const TYPE_ICON: Record<string, string> = {
   Doppeldecker: "🚎",
 };
 
+const BUS_IMAGES: Record<string, string> = {
+  "Mercedes Tourismo":  "/buses/mercedes-tourismo.png",
+  "Setra S 516 HDH":    "/buses/setra-s516.png",
+  "MAN Lion's Coach":   "/buses/man-lions-coach.png",
+  "Neoplan Cityliner":  "/buses/neoplan-cityliner.png",
+  "VDL Futura FHD2":    "/buses/vdl-futura.png",
+  "Mercedes Sprinter":  "/buses/mercedes-sprinter.png",
+  "Irizar i8 Integral": "/buses/irizar-i8.png",
+};
+
 const STATUS_CONFIG: Record<Vehicle["status"], { label: string; bg: string; text: string; dot: string }> = {
   active:   { label: "Aktiv",      bg: "bg-green-500/10",  text: "text-green-400",  dot: "bg-green-400" },
   standby:  { label: "Bereit",     bg: "bg-yellow-500/10", text: "text-yellow-400", dot: "bg-yellow-400" },
@@ -159,17 +169,31 @@ export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, o
                 >
                   {/* Vehicle info cell */}
                   <div
-                    className="flex-shrink-0 w-64 px-4 py-3 border-r border-white/[0.05] cursor-pointer"
+                    className="flex-shrink-0 w-64 px-3 py-2 border-r border-white/[0.05] cursor-pointer"
                     onClick={() => setSelectedVehicle(selectedVehicle?.id === vehicle.id ? null : vehicle)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                        {/* Bus photo thumbnail */}
+                        {BUS_IMAGES[vehicle.name] ? (
+                          <div className="flex-shrink-0 w-16 h-10 rounded overflow-hidden border border-white/10 bg-zinc-900 relative">
+                            <img
+                              src={BUS_IMAGES[vehicle.name]}
+                              alt={vehicle.name}
+                              className="w-full h-full object-cover"
+                              style={{ filter: isBlocked ? "grayscale(1) opacity(0.5)" : "none" }}
+                            />
+                            {/* Status dot overlay */}
+                            <span className={`absolute bottom-0.5 left-0.5 w-2 h-2 rounded-full border border-black ${cfg.dot}`} />
+                          </div>
+                        ) : (
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                        )}
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-white truncate leading-tight">
-                            {TYPE_ICON[vehicle.type]} {vehicle.name}
+                            {vehicle.name}
                           </p>
-                          <p className="text-[10px] text-zinc-600 tabular-nums">{vehicle.plate}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">{TYPE_ICON[vehicle.type]} {vehicle.plate}</p>
                         </div>
                       </div>
                       {/* Block button */}
