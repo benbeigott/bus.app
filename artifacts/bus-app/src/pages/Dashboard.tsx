@@ -157,7 +157,7 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
         )}
         {activeTab === "dashboard" && (
           <div className="p-6 space-y-6">
-            <StatsBar vehicles={vehicles} bookings={bookings} />
+            <StatsBar vehicles={vehicles} bookings={bookings} isMaster={isMaster} />
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={isMaster} onUpdateVehicle={updateVehicle} />
