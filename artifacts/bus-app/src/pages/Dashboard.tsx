@@ -8,14 +8,22 @@ import BookingTable from "@/components/BookingTable";
 import FuelWidget from "@/components/FuelWidget";
 import StatsBar from "@/components/StatsBar";
 import DispatchPlanner from "@/components/DispatchPlanner";
-import { INITIAL_VEHICLES, INITIAL_BOOKINGS, type Vehicle, type Booking } from "@/lib/data";
+import AdminPanel from "@/components/AdminPanel";
+import { INITIAL_VEHICLES, INITIAL_BOOKINGS, PARTNERS, type Vehicle, type Booking } from "@/lib/data";
 
 interface Props {
   session: UserSession;
   onLogout: () => void;
 }
 
-type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung";
+type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung" | "verwaltung";
+
+interface Partner {
+  id: string;
+  code: string;
+  name: string;
+  role: "partner";
+}
 
 export default function Dashboard({ session, onLogout }: Props) {
   const { time, dateStr } = useLiveClock();
@@ -23,6 +31,7 @@ export default function Dashboard({ session, onLogout }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(session.role === "master" ? "planung" : "dashboard");
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
+  const [partners, setPartners] = useState<Partner[]>(PARTNERS);
 
   const isMaster = session.role === "master";
 
@@ -39,12 +48,29 @@ export default function Dashboard({ session, onLogout }: Props) {
     { id: "fleet", label: "Flotte" },
     { id: "bookings", label: "Buchungen" },
     { id: "calendar", label: "Kalender" },
+    { id: "verwaltung", label: "Verwaltung" },
   ];
 
   const tabs = isMaster ? masterTabs : partnerTabs;
 
   function updateVehicle(v: Vehicle) {
     setVehicles(prev => prev.map(x => x.id === v.id ? v : x));
+  }
+
+  function handleAddVehicle(v: Vehicle) {
+    setVehicles(prev => [...prev, v]);
+  }
+
+  function handleAddPartner(p: Partner) {
+    setPartners(prev => [...prev, p]);
+  }
+
+  function handleDeletePartner(id: string) {
+    setPartners(prev => prev.filter(p => p.id !== id));
+  }
+
+  function handleUpdatePartner(p: Partner) {
+    setPartners(prev => prev.map(x => x.id === p.id ? p : x));
   }
 
   return (
@@ -63,8 +89,12 @@ export default function Dashboard({ session, onLogout }: Props) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? "text-yellow-500 bg-yellow-500/10 border border-yellow-500/20"
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    ? tab.id === "verwaltung"
+                      ? "text-yellow-500 bg-yellow-500/10 border border-yellow-500/30"
+                      : "text-yellow-500 bg-yellow-500/10 border border-yellow-500/20"
+                    : tab.id === "verwaltung"
+                      ? "text-yellow-600/50 hover:text-yellow-500 hover:bg-yellow-500/5"
+                      : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
                 }`}
               >
                 {tab.label}
@@ -99,7 +129,11 @@ export default function Dashboard({ session, onLogout }: Props) {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all ${
-              activeTab === tab.id ? "text-yellow-500 border-yellow-500" : "text-zinc-500 border-transparent"
+              activeTab === tab.id
+                ? "text-yellow-500 border-yellow-500"
+                : tab.id === "verwaltung"
+                  ? "text-yellow-600/40 border-transparent"
+                  : "text-zinc-500 border-transparent"
             }`}
           >
             {tab.label}
@@ -141,6 +175,18 @@ export default function Dashboard({ session, onLogout }: Props) {
         {activeTab === "calendar" && (
           <div className="p-6">
             <BookingCalendar vehicles={vehicles} bookings={bookings} onUpdateBookings={setBookings} isMaster={isMaster} />
+          </div>
+        )}
+        {activeTab === "verwaltung" && isMaster && (
+          <div className="p-6">
+            <AdminPanel
+              vehicles={vehicles}
+              partners={partners}
+              onAddVehicle={handleAddVehicle}
+              onAddPartner={handleAddPartner}
+              onDeletePartner={handleDeletePartner}
+              onUpdatePartner={handleUpdatePartner}
+            />
           </div>
         )}
       </div>
