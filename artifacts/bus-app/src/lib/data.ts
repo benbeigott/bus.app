@@ -21,6 +21,7 @@ export interface Booking {
   id: string;
   vehicleId: string;
   date: string;
+  endDate?: string;
   departureTime?: string;
   returnTime?: string;
   route: string;
@@ -60,10 +61,10 @@ export const INITIAL_BOOKINGS: Booking[] = [
   { id: "b1", vehicleId: "v1", date: "2026-03-15", departureTime: "08:00", returnTime: "22:00", route: "Mainz → Paris", customer: "Reiseverband Frankfurt", price: 2800, status: "confirmed", seats: 48, contact: "+49 69 123456" },
   { id: "b2", vehicleId: "v1", date: "2026-03-22", departureTime: "07:30", returnTime: "20:00", route: "Frankfurt → Amsterdam", customer: "SchulReisen GmbH", price: 3200, status: "confirmed", seats: 50 },
   { id: "b3", vehicleId: "v2", date: "2026-03-16", departureTime: "09:00", returnTime: "19:30", route: "Koblenz → München", customer: "TUI Gruppenreisen", price: 1800, status: "confirmed", seats: 45 },
-  { id: "b4", vehicleId: "v2", date: "2026-03-28", departureTime: "06:00", route: "Mainz → Prag", customer: "Stadtwerke Mainz", price: 4100, status: "pending", seats: 42 },
-  { id: "b5", vehicleId: "v3", date: "2026-03-19", departureTime: "07:00", returnTime: "23:00", route: "Darmstadt → Wien", customer: "Globetrotter AG", price: 5200, status: "confirmed", seats: 58 },
+  { id: "b4", vehicleId: "v2", date: "2026-03-28", endDate: "2026-03-30", departureTime: "06:00", route: "Mainz → Prag", customer: "Stadtwerke Mainz", price: 4100, status: "pending", seats: 42 },
+  { id: "b5", vehicleId: "v3", date: "2026-03-19", endDate: "2026-03-21", departureTime: "07:00", route: "Darmstadt → Wien", customer: "Globetrotter AG", price: 5200, status: "confirmed", seats: 58 },
   { id: "b6", vehicleId: "v4", date: "2026-03-17", departureTime: "08:30", returnTime: "21:00", route: "Wiesbaden → Berlin", customer: "BundesParty e.V.", price: 3600, status: "confirmed", seats: 50 },
-  { id: "b7", vehicleId: "v4", date: "2026-03-25", departureTime: "05:00", route: "Mainz → Barcelona", customer: "Premium Tours", price: 8900, status: "pending", seats: 48 },
+  { id: "b7", vehicleId: "v4", date: "2026-03-25", endDate: "2026-03-27", departureTime: "05:00", route: "Mainz → Barcelona", customer: "Premium Tours", price: 8900, status: "pending", seats: 48 },
   { id: "b8", vehicleId: "v6", date: "2026-03-14", departureTime: "10:00", returnTime: "16:00", route: "Mainz City Tour", customer: "Hotel Hilton Mainz", price: 650, status: "confirmed", seats: 18 },
   { id: "b9", vehicleId: "v6", date: "2026-03-20", departureTime: "06:30", returnTime: "09:00", route: "Airport Shuttle FRA", customer: "Private Buchung", price: 380, status: "confirmed", seats: 12 },
   { id: "b10", vehicleId: "v7", date: "2026-03-30", departureTime: "05:30", route: "Mainz → Rom", customer: "Kirchengemeinde St. Stephan", price: 7200, status: "pending", seats: 52 },
