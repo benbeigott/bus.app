@@ -84,9 +84,12 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
     <div className="min-h-screen bg-black flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#050505] sticky top-0 z-50">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <span className="text-2xl font-bold text-white tracking-tight">bus</span>
-            <span className="text-2xl font-bold text-yellow-500 tracking-tight">.app</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-full object-cover" />
+            <div className="flex items-center gap-0">
+              <span className="text-xl font-bold text-white tracking-tight">busdisposition</span>
+              <span className="text-xl font-bold text-yellow-500 tracking-tight">.de</span>
+            </div>
           </div>
           <div className="hidden md:flex items-center gap-1">
             {tabs.map(tab => (
