@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type UserSession } from "@/App";
+import { type UserSession, type Partner } from "@/App";
 import { useLiveClock } from "@/hooks/useLiveClock";
 import { useFuelPrices } from "@/hooks/useFuelPrices";
 import FleetOverview from "@/components/FleetOverview";
@@ -9,29 +9,24 @@ import FuelWidget from "@/components/FuelWidget";
 import StatsBar from "@/components/StatsBar";
 import DispatchPlanner from "@/components/DispatchPlanner";
 import AdminPanel from "@/components/AdminPanel";
-import { INITIAL_VEHICLES, INITIAL_BOOKINGS, PARTNERS, type Vehicle, type Booking } from "@/lib/data";
+import { INITIAL_VEHICLES, INITIAL_BOOKINGS, INITIAL_DRIVERS, type Vehicle, type Booking, type Driver } from "@/lib/data";
 
 interface Props {
   session: UserSession;
   onLogout: () => void;
+  partners: Partner[];
+  onPartnersChange: (p: Partner[]) => void;
 }
 
 type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung" | "verwaltung";
 
-interface Partner {
-  id: string;
-  code: string;
-  name: string;
-  role: "partner";
-}
-
-export default function Dashboard({ session, onLogout }: Props) {
+export default function Dashboard({ session, onLogout, partners, onPartnersChange }: Props) {
   const { time, dateStr } = useLiveClock();
   const { prices, lastUpdate } = useFuelPrices();
   const [activeTab, setActiveTab] = useState<Tab>(session.role === "master" ? "planung" : "dashboard");
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
   const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
-  const [partners, setPartners] = useState<Partner[]>(PARTNERS);
+  const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
 
   const isMaster = session.role === "master";
 
@@ -61,21 +56,32 @@ export default function Dashboard({ session, onLogout }: Props) {
     setVehicles(prev => [...prev, v]);
   }
 
+  function handleDeleteVehicle(id: string) {
+    setVehicles(prev => prev.filter(v => v.id !== id));
+  }
+
   function handleAddPartner(p: Partner) {
-    setPartners(prev => [...prev, p]);
+    onPartnersChange([...partners, p]);
   }
 
   function handleDeletePartner(id: string) {
-    setPartners(prev => prev.filter(p => p.id !== id));
+    onPartnersChange(partners.filter(p => p.id !== id));
   }
 
   function handleUpdatePartner(p: Partner) {
-    setPartners(prev => prev.map(x => x.id === p.id ? p : x));
+    onPartnersChange(partners.map(x => x.id === p.id ? p : x));
+  }
+
+  function handleAddDriver(d: Driver) {
+    setDrivers(prev => [...prev, d]);
+  }
+
+  function handleDeleteDriver(id: string) {
+    setDrivers(prev => prev.filter(d => d.id !== id));
   }
 
   return (
     <div className="min-h-screen bg-black flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#050505] sticky top-0 z-50">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -89,9 +95,7 @@ export default function Dashboard({ session, onLogout }: Props) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? tab.id === "verwaltung"
-                      ? "text-yellow-500 bg-yellow-500/10 border border-yellow-500/30"
-                      : "text-yellow-500 bg-yellow-500/10 border border-yellow-500/20"
+                    ? "text-yellow-500 bg-yellow-500/10 border border-yellow-500/20"
                     : tab.id === "verwaltung"
                       ? "text-yellow-600/50 hover:text-yellow-500 hover:bg-yellow-500/5"
                       : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
@@ -122,18 +126,13 @@ export default function Dashboard({ session, onLogout }: Props) {
         </div>
       </header>
 
-      {/* Mobile nav */}
       <div className="md:hidden flex overflow-x-auto border-b border-white/[0.06] bg-[#050505]">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all ${
-              activeTab === tab.id
-                ? "text-yellow-500 border-yellow-500"
-                : tab.id === "verwaltung"
-                  ? "text-yellow-600/40 border-transparent"
-                  : "text-zinc-500 border-transparent"
+              activeTab === tab.id ? "text-yellow-500 border-yellow-500" : "text-zinc-500 border-transparent"
             }`}
           >
             {tab.label}
@@ -141,7 +140,6 @@ export default function Dashboard({ session, onLogout }: Props) {
         ))}
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-auto">
         {activeTab === "planung" && isMaster && (
           <div className="p-6">
@@ -182,10 +180,14 @@ export default function Dashboard({ session, onLogout }: Props) {
             <AdminPanel
               vehicles={vehicles}
               partners={partners}
+              drivers={drivers}
               onAddVehicle={handleAddVehicle}
+              onDeleteVehicle={handleDeleteVehicle}
               onAddPartner={handleAddPartner}
               onDeletePartner={handleDeletePartner}
               onUpdatePartner={handleUpdatePartner}
+              onAddDriver={handleAddDriver}
+              onDeleteDriver={handleDeleteDriver}
             />
           </div>
         )}
