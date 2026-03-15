@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { type Vehicle, type Driver } from "@/lib/data";
 import { type Partner } from "@/App";
-import { DEPOT_LOCATIONS, type DepotLocation } from "@/lib/depots";
+import { type DepotLocation } from "@/lib/depots";
+import LocationPicker from "@/components/LocationPicker";
 
 interface Props {
   vehicles: Vehicle[];
@@ -53,7 +54,8 @@ export default function AdminPanel({
   onAddPartner, onDeletePartner, onUpdatePartner,
   onAddDriver, onDeleteDriver,
 }: Props) {
-  const [activeSection, setActiveSection] = useState<Section>("partners");
+  const [activeSection, setActiveSection] = useState<Section>("depot");
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const [newVehicle, setNewVehicle] = useState(emptyVehicle);
   const [vehicleAdded, setVehicleAdded] = useState(false);
@@ -126,49 +128,45 @@ export default function AdminPanel({
 
       {/* DEPOT & TANKEN */}
       {activeSection === "depot" && (
-        <div className="gold-border rounded-xl p-6 space-y-6">
+        <div className="gold-border rounded-xl p-6 space-y-5">
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Aktueller Depot-Standort</p>
-            <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <span className="text-2xl">📍</span>
-              <div>
-                <p className="text-sm font-bold text-yellow-400">{depot.name}</p>
-                <p className="text-xs text-zinc-500">{depot.lat.toFixed(4)}° N, {depot.lng.toFixed(4)}° E</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">Aktueller Depot-Standort</p>
+            <div className="flex items-center justify-between p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📍</span>
+                <div>
+                  <p className="text-sm font-bold text-yellow-400">{depot.name}</p>
+                  <p className="text-xs text-zinc-500 tabular-nums mt-0.5">
+                    {depot.lat.toFixed(5)}° N · {depot.lng.toFixed(5)}° E
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setShowLocationPicker(true)}
+                className="px-4 py-2 text-xs font-bold bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 transition-all flex items-center gap-2"
+              >
+                <span>🗺</span> Standort ändern
+              </button>
             </div>
           </div>
-          <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-3">Depot-Standort ändern</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {DEPOT_LOCATIONS.map(loc => (
-                <button
-                  key={loc.name}
-                  onClick={() => onDepotChange(loc)}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-all text-left ${
-                    depot.name === loc.name
-                      ? "bg-yellow-500/10 border-yellow-500/40 text-yellow-400"
-                      : "border-white/[0.06] text-zinc-400 hover:border-yellow-500/20 hover:text-zinc-200"
-                  }`}
-                >
-                  <div>
-                    <p className="text-xs font-semibold">{loc.name}</p>
-                    <p className="text-[10px] text-zinc-600">{loc.lat.toFixed(3)}, {loc.lng.toFixed(3)}</p>
-                  </div>
-                  {depot.name === loc.name && (
-                    <span className="text-yellow-500 text-sm">✓</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="p-4 bg-black/30 border border-white/[0.05] rounded-lg">
+
+          <div className="p-4 bg-black/30 border border-white/[0.05] rounded-xl">
+            <p className="text-xs text-yellow-500 font-semibold mb-1">Tankberater-Logik</p>
             <p className="text-[11px] text-zinc-500 leading-relaxed">
-              <span className="text-yellow-500 font-semibold">Tankberater-Logik:</span> Alle Tankstellen im Umkreis von 25 km werden über TankerKönig abgerufen.
-              Der Algorithmus vergleicht Diesel-Preise unter Berücksichtigung von Umwegkosten (400L Tank, 35L/100km Verbrauch, Hin- und Rückfahrt).
+              Alle Tankstellen im Umkreis von 25 km um den Depot-Standort werden über TankerKönig abgerufen.
+              Der Algorithmus vergleicht Diesel-Preise inklusive Umwegkosten (400 L Tank · 35 L/100 km · Hin- und Rückfahrt).
               Empfehlungen erscheinen automatisch im Dashboard für alle Nutzer.
             </p>
           </div>
         </div>
+      )}
+
+      {showLocationPicker && (
+        <LocationPicker
+          current={depot}
+          onConfirm={loc => { onDepotChange(loc); setShowLocationPicker(false); }}
+          onClose={() => setShowLocationPicker(false)}
+        />
       )}
 
       {/* PARTNER ACCOUNTS */}
