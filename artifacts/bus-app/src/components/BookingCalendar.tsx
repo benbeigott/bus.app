@@ -22,6 +22,9 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
   const [modalRoute, setModalRoute] = useState("");
   const [modalCustomer, setModalCustomer] = useState("");
   const [modalPrice, setModalPrice] = useState("");
+  const [modalDepartureTime, setModalDepartureTime] = useState("");
+  const [modalReturnTime, setModalReturnTime] = useState("");
+  const [modalTravelInfo, setModalTravelInfo] = useState("");
 
   function prevMonth() {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
@@ -33,10 +36,8 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
     else setViewMonth(m => m + 1);
   }
 
-  // Build calendar grid
   const firstDay = new Date(viewYear, viewMonth, 1);
   const lastDay = new Date(viewYear, viewMonth + 1, 0);
-  // Monday = 0
   let startDow = firstDay.getDay() - 1;
   if (startDow < 0) startDow = 6;
   const totalCells = startDow + lastDay.getDate();
@@ -74,6 +75,9 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
     setModalRoute("");
     setModalCustomer("");
     setModalPrice("");
+    setModalDepartureTime("");
+    setModalReturnTime("");
+    setModalTravelInfo("");
     setShowModal(true);
   }
 
@@ -83,11 +87,14 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
       id: `b${Date.now()}`,
       vehicleId: modalVehicleId,
       date: modalDate,
+      departureTime: modalDepartureTime || undefined,
+      returnTime: modalReturnTime || undefined,
       route: modalRoute,
       customer: modalCustomer,
-      price: Number(modalPrice),
+      price: Number(modalPrice) || 0,
       seats: 0,
       status: "pending",
+      travelInfo: modalTravelInfo || undefined,
     };
     onUpdateBookings([...bookings, newBooking]);
     setShowModal(false);
@@ -123,7 +130,6 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
         </div>
       </div>
 
-      {/* Vehicle legend */}
       <div className="flex flex-wrap gap-2 mb-4">
         {vehicles.map(v => (
           <div key={v.id} className={`flex items-center gap-1.5 text-xs text-zinc-500 px-2.5 py-1 rounded-full border ${vehicleColors[v.id]} border-opacity-40 bg-white/[0.02]`}>
@@ -133,9 +139,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className="gold-border rounded-xl overflow-hidden">
-        {/* Header */}
         <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {DOW.map(d => (
             <div key={d} className="py-2.5 text-center text-xs font-semibold text-zinc-500 uppercase tracking-widest bg-[#050505]">
@@ -144,7 +148,6 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
           ))}
         </div>
 
-        {/* Grid */}
         {Array.from({ length: rows }, (_, row) => (
           <div key={row} className="grid grid-cols-7">
             {Array.from({ length: 7 }, (_, col) => {
@@ -175,6 +178,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                         key={b.id}
                         className={`text-[10px] leading-none px-1 py-0.5 rounded truncate border-l-2 ${vehicleColors[b.vehicleId]} bg-white/[0.03] text-zinc-300`}
                       >
+                        {b.departureTime && <span className="text-zinc-500 mr-1">{b.departureTime}</span>}
                         {b.route}
                       </div>
                     ))}
@@ -182,9 +186,6 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                       <div className="text-[10px] text-zinc-600">+{dayBookings.length - 3} mehr</div>
                     )}
                   </div>
-                  {!pastFlag && isMaster && dayBookings.length === 0 && (
-                    <div className="text-[10px] text-zinc-700 mt-1 opacity-0 group-hover:opacity-100">+ buchen</div>
-                  )}
                 </div>
               );
             })}
@@ -192,7 +193,6 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
         ))}
       </div>
 
-      {/* Upcoming bookings list */}
       <div className="mt-6 gold-border rounded-xl p-5">
         <p className="text-xs text-zinc-500 uppercase tracking-widest mb-4">Kommende Fahrten im {MONTHS[viewMonth]}</p>
         <div className="space-y-2">
@@ -207,7 +207,10 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
               const v = vehicles.find(x => x.id === b.vehicleId);
               return (
                 <div key={b.id} className={`flex items-center gap-3 p-3 bg-white/[0.02] rounded-lg border-l-2 ${vehicleColors[b.vehicleId]}`}>
-                  <span className="text-xs text-zinc-500 w-20 flex-shrink-0 tabular-nums">{b.date}</span>
+                  <div className="flex-shrink-0 text-right w-24">
+                    <div className="text-xs text-zinc-500 tabular-nums">{b.date}</div>
+                    {b.departureTime && <div className="text-[10px] text-yellow-500/70 tabular-nums">⏱ {b.departureTime}{b.returnTime ? ` – ${b.returnTime}` : ""}</div>}
+                  </div>
                   <span className="text-xs text-zinc-300 flex-1 font-medium">{b.route}</span>
                   <span className="text-xs text-zinc-500 hidden md:inline">{v?.name}</span>
                   <span className="text-xs text-zinc-500 hidden sm:inline">{b.customer}</span>
@@ -227,48 +230,95 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
         </div>
       </div>
 
-      {/* Quick-book modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-          <div className="gold-border rounded-2xl p-8 w-full max-w-md bg-[#0a0a0a] relative">
+          <div className="gold-border rounded-2xl p-6 w-full max-w-md bg-[#0a0a0a] relative overflow-y-auto max-h-[90vh]">
             <div className="corner-tl" /><div className="corner-tr" />
             <div className="corner-bl" /><div className="corner-br" />
-            <h3 className="text-lg font-semibold text-white mb-1">Fahrt buchen</h3>
-            <p className="text-xs text-zinc-500 mb-6">{modalDate}</p>
-            <form onSubmit={handleModalSubmit} className="space-y-4">
-              <select
-                value={modalVehicleId}
-                onChange={e => setModalVehicleId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 appearance-none"
-              >
-                {vehicles.map(v => (
-                  <option key={v.id} value={v.id} className="bg-black">{v.name}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                value={modalRoute}
-                onChange={e => setModalRoute(e.target.value)}
-                placeholder="Route (z.B. Mainz → Paris)"
-                className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
-                required
-              />
-              <input
-                type="text"
-                value={modalCustomer}
-                onChange={e => setModalCustomer(e.target.value)}
-                placeholder="Kundenname"
-                className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
-                required
-              />
-              <input
-                type="number"
-                value={modalPrice}
-                onChange={e => setModalPrice(e.target.value)}
-                placeholder="Preis in €"
-                className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
-              />
-              <div className="flex gap-3 pt-1">
+            <h3 className="text-lg font-semibold text-white mb-1">Neue Buchung</h3>
+            <p className="text-xs text-zinc-500 mb-5">{modalDate}</p>
+            <form onSubmit={handleModalSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">Fahrzeug</label>
+                <select
+                  value={modalVehicleId}
+                  onChange={e => setModalVehicleId(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 appearance-none"
+                >
+                  {vehicles.map(v => (
+                    <option key={v.id} value={v.id} className="bg-black">{v.name} ({v.plate})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-zinc-500">Abfahrtszeit</label>
+                  <input
+                    type="time"
+                    value={modalDepartureTime}
+                    onChange={e => setModalDepartureTime(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-zinc-500">Rückkunft / Ankunft</label>
+                  <input
+                    type="time"
+                    value={modalReturnTime}
+                    onChange={e => setModalReturnTime(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">Route *</label>
+                <input
+                  type="text"
+                  value={modalRoute}
+                  onChange={e => setModalRoute(e.target.value)}
+                  placeholder="z.B. Mainz → Paris"
+                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">Kunde / Unternehmen *</label>
+                <input
+                  type="text"
+                  value={modalCustomer}
+                  onChange={e => setModalCustomer(e.target.value)}
+                  placeholder="Kundenname / Unternehmen"
+                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">Preis (€)</label>
+                <input
+                  type="number"
+                  value={modalPrice}
+                  onChange={e => setModalPrice(e.target.value)}
+                  placeholder="2500"
+                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-zinc-500">Reiseinformationen</label>
+                <textarea
+                  value={modalTravelInfo}
+                  onChange={e => setModalTravelInfo(e.target.value)}
+                  placeholder="Besonderheiten, Treffpunkt, Anforderungen..."
+                  rows={2}
+                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20">Abbrechen</button>
                 <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black font-semibold rounded-lg text-sm">Buchen</button>
               </div>
