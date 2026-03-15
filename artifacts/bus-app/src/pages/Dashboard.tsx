@@ -7,6 +7,7 @@ import BookingCalendar from "@/components/BookingCalendar";
 import BookingTable from "@/components/BookingTable";
 import FuelWidget from "@/components/FuelWidget";
 import FuelAdvisor from "@/components/FuelAdvisor";
+import FuelPriceTicker from "@/components/FuelPriceTicker";
 import StatsBar from "@/components/StatsBar";
 import DispatchPlanner from "@/components/DispatchPlanner";
 import AdminPanel from "@/components/AdminPanel";
@@ -113,7 +114,9 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
           </div>
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
+          <FuelPriceTicker prices={prices} isLive={isLive} />
+          <div className="h-8 w-px bg-white/10 hidden lg:block" />
           <div className="text-right">
             <div className="text-lg font-bold text-yellow-500 tabular-nums tracking-wider leading-none">{time}</div>
             <div className="text-xs text-zinc-600 mt-0.5 leading-none hidden md:block">{dateStr}</div>
