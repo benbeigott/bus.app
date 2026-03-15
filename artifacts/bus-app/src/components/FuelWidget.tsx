@@ -3,9 +3,11 @@ import { type FuelPrice } from "@/lib/data";
 interface Props {
   prices: FuelPrice[];
   lastUpdate: Date;
+  stationName?: string;
+  isLive?: boolean;
 }
 
-export default function FuelWidget({ prices, lastUpdate }: Props) {
+export default function FuelWidget({ prices, lastUpdate, stationName, isLive }: Props) {
   const updateStr = lastUpdate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   return (
@@ -16,8 +18,8 @@ export default function FuelWidget({ prices, lastUpdate }: Props) {
           <p className="text-base font-semibold text-white mt-0.5">Kraftstoff-Monitor</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-400 pulse-gold" />
-          <span className="text-xs text-zinc-500">Live</span>
+          <span className={`w-2 h-2 rounded-full ${isLive ? "bg-green-400 pulse-gold" : "bg-zinc-600"}`} />
+          <span className="text-xs text-zinc-500">{isLive ? "TankerKönig" : "Offline"}</span>
         </div>
       </div>
 
@@ -32,18 +34,23 @@ export default function FuelWidget({ prices, lastUpdate }: Props) {
               <p className="text-base font-bold text-yellow-500 tabular-nums">
                 {fp.price.toFixed(3).replace(".", ",")}
               </p>
-              <div className={`flex items-center justify-end gap-0.5 text-xs ${fp.change >= 0 ? "text-red-400" : "text-green-400"}`}>
-                <span>{fp.change >= 0 ? "▲" : "▼"}</span>
-                <span>{Math.abs(fp.change).toFixed(3).replace(".", ",")}</span>
-              </div>
+              {fp.change !== 0 && (
+                <div className={`flex items-center justify-end gap-0.5 text-xs ${fp.change > 0 ? "text-red-400" : "text-green-400"}`}>
+                  <span>{fp.change > 0 ? "▲" : "▼"}</span>
+                  <span>{Math.abs(fp.change).toFixed(3).replace(".", ",")}</span>
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-white/[0.05]">
-        <p className="text-xs text-zinc-600 text-center">
-          Zuletzt aktualisiert: {updateStr} · Alle 30 Sek.
+      <div className="mt-4 pt-3 border-t border-white/[0.05] space-y-1">
+        {stationName && (
+          <p className="text-[11px] text-zinc-600 text-center truncate">{stationName}</p>
+        )}
+        <p className="text-xs text-zinc-700 text-center">
+          Stand: {updateStr} · Alle 5 Min.
         </p>
       </div>
     </div>
