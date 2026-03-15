@@ -214,9 +214,11 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                   <span className="text-xs text-zinc-300 flex-1 font-medium">{b.route}</span>
                   <span className="text-xs text-zinc-500 hidden md:inline">{v?.name}</span>
                   <span className="text-xs text-zinc-500 hidden sm:inline">{b.customer}</span>
-                  <span className="text-xs text-yellow-500 font-semibold tabular-nums flex-shrink-0">
-                    € {b.price.toLocaleString("de-DE")}
-                  </span>
+                  {isMaster && (
+                    <span className="text-xs text-yellow-500 font-semibold tabular-nums flex-shrink-0">
+                      € {b.price.toLocaleString("de-DE")}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -296,16 +298,18 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-500">Preis (€)</label>
-                <input
-                  type="number"
-                  value={modalPrice}
-                  onChange={e => setModalPrice(e.target.value)}
-                  placeholder="2500"
-                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
-                />
-              </div>
+              {isMaster && (
+                <div className="space-y-1">
+                  <label className="text-xs text-zinc-500">Preis (€)</label>
+                  <input
+                    type="number"
+                    value={modalPrice}
+                    onChange={e => setModalPrice(e.target.value)}
+                    placeholder="2500"
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
+                  />
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-xs text-zinc-500">Reiseinformationen</label>
