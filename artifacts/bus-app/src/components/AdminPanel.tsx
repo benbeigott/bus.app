@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { type Vehicle, type Driver } from "@/lib/data";
 import { type Partner } from "@/App";
+import { DEPOT_LOCATIONS, type DepotLocation } from "@/lib/depots";
 
 interface Props {
   vehicles: Vehicle[];
   partners: Partner[];
   drivers: Driver[];
+  depot: DepotLocation;
+  onDepotChange: (d: DepotLocation) => void;
   onAddVehicle: (v: Vehicle) => void;
   onDeleteVehicle: (id: string) => void;
   onAddPartner: (p: Partner) => void;
@@ -42,10 +45,10 @@ const emptyVehicle = {
   mileage: 0,
 };
 
-type Section = "partners" | "vehicles" | "drivers";
+type Section = "partners" | "vehicles" | "drivers" | "depot";
 
 export default function AdminPanel({
-  vehicles, partners, drivers,
+  vehicles, partners, drivers, depot, onDepotChange,
   onAddVehicle, onDeleteVehicle,
   onAddPartner, onDeletePartner, onUpdatePartner,
   onAddDriver, onDeleteDriver,
@@ -91,9 +94,10 @@ export default function AdminPanel({
   }
 
   const sections = [
+    { id: "depot" as const,    label: "Depot & Tanken" },
     { id: "partners" as const, label: "Partner-Konten" },
     { id: "vehicles" as const, label: "Flotte verwalten" },
-    { id: "drivers" as const, label: "Fahrer" },
+    { id: "drivers" as const,  label: "Fahrer" },
   ];
 
   return (
@@ -119,6 +123,53 @@ export default function AdminPanel({
           </button>
         ))}
       </div>
+
+      {/* DEPOT & TANKEN */}
+      {activeSection === "depot" && (
+        <div className="gold-border rounded-xl p-6 space-y-6">
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Aktueller Depot-Standort</p>
+            <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <span className="text-2xl">📍</span>
+              <div>
+                <p className="text-sm font-bold text-yellow-400">{depot.name}</p>
+                <p className="text-xs text-zinc-500">{depot.lat.toFixed(4)}° N, {depot.lng.toFixed(4)}° E</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-3">Depot-Standort ändern</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {DEPOT_LOCATIONS.map(loc => (
+                <button
+                  key={loc.name}
+                  onClick={() => onDepotChange(loc)}
+                  className={`flex items-center justify-between p-3 rounded-lg border transition-all text-left ${
+                    depot.name === loc.name
+                      ? "bg-yellow-500/10 border-yellow-500/40 text-yellow-400"
+                      : "border-white/[0.06] text-zinc-400 hover:border-yellow-500/20 hover:text-zinc-200"
+                  }`}
+                >
+                  <div>
+                    <p className="text-xs font-semibold">{loc.name}</p>
+                    <p className="text-[10px] text-zinc-600">{loc.lat.toFixed(3)}, {loc.lng.toFixed(3)}</p>
+                  </div>
+                  {depot.name === loc.name && (
+                    <span className="text-yellow-500 text-sm">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="p-4 bg-black/30 border border-white/[0.05] rounded-lg">
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              <span className="text-yellow-500 font-semibold">Tankberater-Logik:</span> Alle Tankstellen im Umkreis von 25 km werden über TankerKönig abgerufen.
+              Der Algorithmus vergleicht Diesel-Preise unter Berücksichtigung von Umwegkosten (400L Tank, 35L/100km Verbrauch, Hin- und Rückfahrt).
+              Empfehlungen erscheinen automatisch im Dashboard für alle Nutzer.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* PARTNER ACCOUNTS */}
       {activeSection === "partners" && (
