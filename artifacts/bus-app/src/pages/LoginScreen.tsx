@@ -78,10 +78,17 @@ export default function LoginScreen({ onLogin, partners }: Props) {
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="text-center mb-14">
-          <p className="text-xs text-zinc-600 uppercase tracking-[0.35em] mb-3">Fleet Operations Platform</p>
-          <div className="flex items-center justify-center gap-1">
-            <span className="text-5xl font-bold text-white tracking-tight">bus</span>
-            <span className="text-5xl font-bold text-yellow-500 tracking-tight">.app</span>
+          <p className="text-xs text-zinc-600 uppercase tracking-[0.35em] mb-5">Fleet Operations Platform</p>
+          <div className="flex justify-center mb-5">
+            <img
+              src="/logo.jpg"
+              alt="busdisposition.de Logo"
+              className="w-28 h-28 rounded-full object-cover shadow-[0_0_40px_rgba(201,162,39,0.25)]"
+            />
+          </div>
+          <div className="flex items-center justify-center gap-0.5">
+            <span className="text-4xl font-bold text-white tracking-tight">busdisposition</span>
+            <span className="text-4xl font-bold text-yellow-500 tracking-tight">.de</span>
           </div>
           <p className="text-xs text-zinc-600 uppercase tracking-[0.25em] mt-3">Das Mutterschiff der Flottenplanung</p>
         </div>
@@ -129,7 +136,7 @@ export default function LoginScreen({ onLogin, partners }: Props) {
       </div>
 
       <footer className="text-center py-4">
-        <p className="text-xs text-zinc-800">bus.app</p>
+        <p className="text-xs text-zinc-800">busdisposition.de</p>
       </footer>
 
       {masterOverlay && (
