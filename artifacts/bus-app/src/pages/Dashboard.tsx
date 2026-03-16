@@ -197,6 +197,7 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
               onDepotChange={setDepot}
               onAddVehicle={handleAddVehicle}
               onDeleteVehicle={handleDeleteVehicle}
+              onUpdateVehicle={updateVehicle}
               onAddPartner={handleAddPartner}
               onDeletePartner={handleDeletePartner}
               onUpdatePartner={handleUpdatePartner}
