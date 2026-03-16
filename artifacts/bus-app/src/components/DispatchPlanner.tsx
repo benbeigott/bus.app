@@ -195,10 +195,10 @@ export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, o
                   >
                     <div className="flex items-center justify-between gap-1 w-full">
                       <div className="flex items-center gap-2 min-w-0">
-                        {BUS_IMAGES[vehicle.name] ? (
+                        {(vehicle.images?.[0] || BUS_IMAGES[vehicle.name]) ? (
                           <div className="flex-shrink-0 w-16 h-9 rounded overflow-hidden border border-white/10 bg-zinc-900 relative">
                             <img
-                              src={BUS_IMAGES[vehicle.name]}
+                              src={vehicle.images?.[0] ?? BUS_IMAGES[vehicle.name]}
                               alt={vehicle.name}
                               className="w-full h-full object-cover"
                               style={{ filter: isBlocked ? "grayscale(1) opacity(0.5)" : "none" }}
