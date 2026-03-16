@@ -9,6 +9,7 @@ export interface Vehicle {
   lastService: string;
   fuelLevel: number;
   mileage: number;
+  images?: string[];
 }
 
 export interface Driver {
