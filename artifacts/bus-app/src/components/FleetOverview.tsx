@@ -67,11 +67,29 @@ export default function FleetOverview({ vehicles, bookings, isMaster, onUpdateVe
           const fuelBarColor = v.fuelLevel > 60 ? "bg-green-500" : v.fuelLevel > 30 ? "bg-yellow-500" : "bg-red-500";
 
           return (
-            <div key={v.id} className="p-4 bg-white/[0.02] border border-white/[0.04] rounded-lg hover:border-yellow-500/15 transition-all">
+            <div key={v.id} className="bg-white/[0.02] border border-white/[0.04] rounded-lg hover:border-yellow-500/15 transition-all overflow-hidden">
+              {/* Bus photo — full-width banner if available */}
+              {v.images?.[0] && (
+                <div className="w-full h-36 overflow-hidden relative">
+                  <img
+                    src={v.images[0]}
+                    alt={v.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-2 left-3">
+                    <span className="text-sm font-bold text-white drop-shadow">{v.name}</span>
+                    <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[v.status]}`}>
+                      {STATUS_LABELS[v.status]}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-white truncate">{v.name}</span>
+                    {!v.images?.[0] && <span className="text-sm font-semibold text-white truncate">{v.name}</span>}
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[v.status]}`}>
                       {STATUS_LABELS[v.status]}
                     </span>
@@ -131,6 +149,7 @@ export default function FleetOverview({ vehicles, bookings, isMaster, onUpdateVe
                     </button>
                   )}
                 </div>
+              </div>
               </div>
             </div>
           );
