@@ -25,6 +25,9 @@ const STATUS_BADGE: Record<Booking["status"], string> = {
 interface BookingForm {
   vehicleId: string;
   date: string;
+  endDate: string;
+  departureTime: string;
+  returnTime: string;
   route: string;
   customer: string;
   price: number | "";
@@ -39,6 +42,9 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
   const [form, setForm] = useState<BookingForm>({
     vehicleId: vehicles[0]?.id || "",
     date: "",
+    endDate: "",
+    departureTime: "",
+    returnTime: "",
     route: "",
     customer: "",
     price: "",
@@ -50,38 +56,53 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
     .sort((a, b) => a.date.localeCompare(b.date));
   const displayed = limit ? filtered.slice(0, limit) : filtered;
 
+  const emptyForm: BookingForm = {
+    vehicleId: vehicles[0]?.id || "",
+    date: "", endDate: "", departureTime: "", returnTime: "",
+    route: "", customer: "", price: "", seats: "", notes: "",
+  };
+
   function openNew() {
     setEditBooking(null);
-    setForm({ vehicleId: vehicles[0]?.id || "", date: "", route: "", customer: "", price: "", seats: "", notes: "" });
+    setForm(emptyForm);
     setShowModal(true);
   }
 
   function openEdit(b: Booking) {
     setEditBooking(b);
-    setForm({ vehicleId: b.vehicleId, date: b.date, route: b.route, customer: b.customer, price: b.price, seats: b.seats, notes: b.notes || "" });
+    setForm({
+      vehicleId: b.vehicleId,
+      date: b.date,
+      endDate: b.endDate || "",
+      departureTime: b.departureTime || "",
+      returnTime: b.returnTime || "",
+      route: b.route,
+      customer: b.customer,
+      price: b.price,
+      seats: b.seats,
+      notes: b.travelInfo || "",
+    });
     setShowModal(true);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const fields = {
+      vehicleId: form.vehicleId,
+      date: form.date,
+      endDate: form.endDate || undefined,
+      departureTime: form.departureTime || undefined,
+      returnTime: form.returnTime || undefined,
+      route: form.route,
+      customer: form.customer,
+      price: Number(form.price),
+      seats: Number(form.seats),
+      travelInfo: form.notes || undefined,
+    };
     if (editBooking) {
-      onUpdate(bookings.map(b => b.id === editBooking.id
-        ? { ...b, ...form, price: Number(form.price), seats: Number(form.seats) }
-        : b
-      ));
+      onUpdate(bookings.map(b => b.id === editBooking.id ? { ...b, ...fields } : b));
     } else {
-      const newBooking: Booking = {
-        id: `b${Date.now()}`,
-        vehicleId: form.vehicleId,
-        date: form.date,
-        route: form.route,
-        customer: form.customer,
-        price: Number(form.price),
-        seats: Number(form.seats),
-        status: "pending",
-        notes: form.notes,
-      };
-      onUpdate([...bookings, newBooking]);
+      onUpdate([...bookings, { id: `b${Date.now()}`, status: "pending" as const, ...fields }]);
     }
     setShowModal(false);
   }
@@ -152,6 +173,9 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
               <tr key={b.id} className="hover:bg-white/[0.02] transition-colors group">
                 <td className="py-3 pr-4">
                   <span className="text-zinc-300 tabular-nums text-xs">{b.date}</span>
+                  {b.endDate && (
+                    <p className="text-[10px] text-zinc-600 mt-0.5 tabular-nums">bis {b.endDate}</p>
+                  )}
                 </td>
                 <td className="py-3 pr-4">
                   <span className="text-zinc-400 text-xs">{getVehicleName(b.vehicleId)}</span>
@@ -225,7 +249,7 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-          <div className="gold-border rounded-2xl p-8 w-full max-w-md relative bg-[#0a0a0a]">
+          <div className="gold-border rounded-2xl p-8 w-full max-w-lg relative bg-[#0a0a0a] max-h-[90vh] overflow-y-auto">
             <div className="corner-tl" /><div className="corner-tr" />
             <div className="corner-bl" /><div className="corner-br" />
             <h3 className="text-lg font-semibold text-white mb-6">
@@ -244,15 +268,48 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="text-xs text-zinc-500 uppercase tracking-widest mb-1 block">Datum</label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-zinc-500 uppercase tracking-widest mb-1 block">Startdatum *</label>
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 uppercase tracking-widest mb-1 block">
+                    Enddatum
+                    <span className="ml-1 text-zinc-700 normal-case">(mehrtägig)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    min={form.date || undefined}
+                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 uppercase tracking-widest mb-1 block">Abfahrt</label>
+                  <input
+                    type="time"
+                    value={form.departureTime}
+                    onChange={e => setForm(f => ({ ...f, departureTime: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 uppercase tracking-widest mb-1 block">Rückkehr</label>
+                  <input
+                    type="time"
+                    value={form.returnTime}
+                    onChange={e => setForm(f => ({ ...f, returnTime: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40"
+                  />
+                </div>
               </div>
               <div>
                 <label className="text-xs text-zinc-500 uppercase tracking-widest mb-1 block">Route</label>
