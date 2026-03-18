@@ -388,7 +388,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                   )}
                   {(isMaster || (!isMaster && b.createdBy === currentPartnerId && b.status !== "cancelled")) && (
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                      {isMaster && b.status !== "confirmed" && (
+                      {b.status !== "confirmed" && (isMaster || b.createdBy === currentPartnerId) && (
                         <button
                           onClick={() => confirmBooking(b.id)}
                           className="text-[10px] px-2 py-0.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/40 border border-green-500/30 transition-all font-semibold"
@@ -524,7 +524,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
               {/* Action buttons */}
               {(() => {
                 const canCancel = b.status !== "cancelled" && (isMaster || b.createdBy === currentPartnerId);
-                const canConfirm = isMaster && b.status !== "confirmed" && b.status !== "cancelled";
+                const canConfirm = (isMaster || b.createdBy === currentPartnerId) && b.status !== "confirmed" && b.status !== "cancelled";
                 return (
                   <div className="flex gap-3">
                     <button onClick={() => setSelectedBooking(null)}
