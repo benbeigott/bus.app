@@ -6,9 +6,10 @@ import { useLiveClock } from "@/hooks/useLiveClock";
 interface Props {
   onLogin: (session: UserSession) => void;
   partners: Partner[];
+  partnersLoaded: boolean;
 }
 
-export default function LoginScreen({ onLogin, partners }: Props) {
+export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props) {
   const { time, dateStr } = useLiveClock();
   const [partnerId, setPartnerId] = useState("");
   const [partnerCode, setPartnerCode] = useState("");
@@ -123,9 +124,14 @@ export default function LoginScreen({ onLogin, partners }: Props) {
               {error && <p className="text-xs text-red-400">{error}</p>}
               <button
                 type="submit"
-                className="w-full py-3.5 bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black font-semibold text-sm tracking-wide rounded-lg hover:shadow-[0_8px_30px_rgba(201,162,39,0.3)] hover:-translate-y-0.5 transition-all mt-2"
+                disabled={!partnersLoaded}
+                className={`w-full py-3.5 font-semibold text-sm tracking-wide rounded-lg transition-all mt-2 ${
+                  partnersLoaded
+                    ? "bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black hover:shadow-[0_8px_30px_rgba(201,162,39,0.3)] hover:-translate-y-0.5"
+                    : "bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                }`}
               >
-                EINLOGGEN
+                {partnersLoaded ? "EINLOGGEN" : "Verbinde…"}
               </button>
             </form>
             <p className="text-xs text-zinc-700 text-center mt-6">
