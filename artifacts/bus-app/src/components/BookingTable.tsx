@@ -8,6 +8,7 @@ interface Props {
   onUpdate: (bookings: Booking[]) => void;
   limit?: number;
   title?: string;
+  currentPartnerId?: string;
 }
 
 const STATUS_LABELS: Record<Booking["status"], string> = {
@@ -35,7 +36,7 @@ interface BookingForm {
   notes: string;
 }
 
-export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, limit, title }: Props) {
+export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, limit, title, currentPartnerId }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const [filter, setFilter] = useState<"all" | Booking["status"]>("all");
@@ -163,7 +164,7 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
               <th className="text-left pb-3 font-medium">Fahrzeug</th>
               <th className="text-left pb-3 font-medium">Route</th>
               <th className="text-left pb-3 font-medium hidden md:table-cell">Kunde</th>
-              {isMaster && <th className="text-right pb-3 font-medium hidden sm:table-cell">Preis</th>}
+              {!isMaster && currentPartnerId && <th className="text-right pb-3 font-medium hidden sm:table-cell">Preis</th>}
               <th className="text-center pb-3 font-medium">Status</th>
               {isMaster && <th className="text-right pb-3 font-medium">Aktionen</th>}
             </tr>
@@ -187,11 +188,15 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
                 <td className="py-3 pr-4 hidden md:table-cell">
                   <span className="text-zinc-400 text-xs">{b.customer}</span>
                 </td>
-                {isMaster && (
+                {!isMaster && currentPartnerId && (
                   <td className="py-3 pr-4 text-right hidden sm:table-cell">
-                    <span className="text-yellow-500 font-semibold tabular-nums text-xs">
-                      € {b.price.toLocaleString("de-DE")}
-                    </span>
+                    {b.createdBy === currentPartnerId && b.price > 0 ? (
+                      <span className="text-yellow-500 font-semibold tabular-nums text-xs">
+                        € {b.price.toLocaleString("de-DE")}
+                      </span>
+                    ) : (
+                      <span className="text-zinc-700 text-xs">—</span>
+                    )}
                   </td>
                 )}
                 <td className="py-3 text-center">
