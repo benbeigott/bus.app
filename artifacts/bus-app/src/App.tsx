@@ -5,7 +5,7 @@ import Dashboard from "@/pages/Dashboard";
 import { Toaster } from "@/components/ui/toaster";
 import { PARTNERS, INITIAL_VEHICLES, INITIAL_BOOKINGS, INITIAL_DRIVERS, type Vehicle, type Booking, type Driver } from "@/lib/data";
 import { DEFAULT_DEPOT, type DepotLocation } from "@/lib/depots";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useStore } from "@/hooks/useStore";
 
 const queryClient = new QueryClient();
 
@@ -26,11 +26,11 @@ export interface Partner {
 function App() {
   const [session, setSession] = useState<UserSession | null>(null);
 
-  const [partners, setPartners] = useLocalStorage<Partner[]>("bd_partners", PARTNERS);
-  const [vehicles, setVehicles] = useLocalStorage<Vehicle[]>("bd_vehicles", INITIAL_VEHICLES);
-  const [bookings, setBookings] = useLocalStorage<Booking[]>("bd_bookings", INITIAL_BOOKINGS);
-  const [drivers, setDrivers] = useLocalStorage<Driver[]>("bd_drivers", INITIAL_DRIVERS);
-  const [depot, setDepot] = useLocalStorage<DepotLocation>("bd_depot", DEFAULT_DEPOT);
+  const [partners, setPartners] = useStore<Partner[]>("partners", PARTNERS);
+  const [vehicles, setVehicles] = useStore<Vehicle[]>("vehicles", INITIAL_VEHICLES);
+  const [bookings, setBookings] = useStore<Booking[]>("bookings", INITIAL_BOOKINGS);
+  const [drivers, setDrivers] = useStore<Driver[]>("drivers", INITIAL_DRIVERS);
+  const [depot, setDepot] = useStore<DepotLocation>("depot", DEFAULT_DEPOT);
 
   return (
     <QueryClientProvider client={queryClient}>
