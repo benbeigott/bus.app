@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { type UserSession, type Partner } from "@/App";
 import { useLiveClock } from "@/hooks/useLiveClock";
 import { useFuelPrices } from "@/hooks/useFuelPrices";
+import { useState } from "react";
 import FleetOverview from "@/components/FleetOverview";
 import BookingCalendar from "@/components/BookingCalendar";
 import BookingTable from "@/components/BookingTable";
@@ -11,7 +12,8 @@ import FuelPriceTicker from "@/components/FuelPriceTicker";
 import StatsBar from "@/components/StatsBar";
 import DispatchPlanner from "@/components/DispatchPlanner";
 import AdminPanel from "@/components/AdminPanel";
-import { INITIAL_VEHICLES, INITIAL_BOOKINGS, INITIAL_DRIVERS, type Vehicle, type Booking, type Driver } from "@/lib/data";
+import Messenger from "@/components/Messenger";
+import { type Vehicle, type Booking, type Driver } from "@/lib/data";
 import { DEFAULT_DEPOT, type DepotLocation } from "@/lib/depots";
 
 interface Props {
@@ -19,26 +21,87 @@ interface Props {
   onLogout: () => void;
   partners: Partner[];
   onPartnersChange: (p: Partner[]) => void;
+  vehicles: Vehicle[];
+  onVehiclesChange: (v: Vehicle[]) => void;
+  bookings: Booking[];
+  onBookingsChange: (b: Booking[]) => void;
+  drivers: Driver[];
+  onDriversChange: (d: Driver[]) => void;
+  depot: DepotLocation;
+  onDepotChange: (d: DepotLocation) => void;
 }
 
-type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung" | "verwaltung";
+type Tab = "dashboard" | "fleet" | "bookings" | "calendar" | "planung" | "verwaltung" | "chat";
 
-export default function Dashboard({ session, onLogout, partners, onPartnersChange }: Props) {
+export default function Dashboard({
+  session, onLogout,
+  partners, onPartnersChange,
+  vehicles, onVehiclesChange,
+  bookings, onBookingsChange,
+  drivers, onDriversChange,
+  depot, onDepotChange,
+}: Props) {
   const { time, dateStr } = useLiveClock();
-  const [depot, setDepot] = useState<DepotLocation>(DEFAULT_DEPOT);
-  const { prices, stations, fuelTip, lastUpdate, stationName, isLive } = useFuelPrices(depot);
   const [activeTab, setActiveTab] = useState<Tab>(session.role === "master" ? "planung" : "dashboard");
-  const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
-  const [bookings, setBookings] = useState<Booking[]>(INITIAL_BOOKINGS);
-  const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
+
+  // Active vehicle for fuel advisor — use first active vehicle's location or fallback to depot
+  const [fuelVehicleId, setFuelVehicleId] = useState<string>("__depot");
+  const activeVehicle = vehicles.find(v => v.id === fuelVehicleId);
+  const fuelDepot: DepotLocation = (activeVehicle?.currentLocationLat && activeVehicle?.currentLocationLng)
+    ? { name: activeVehicle.currentLocation || activeVehicle.name, lat: activeVehicle.currentLocationLat, lng: activeVehicle.currentLocationLng }
+    : depot;
+
+  const { prices, stations, fuelTip, lastUpdate, stationName, isLive } = useFuelPrices(fuelDepot);
 
   const isMaster = session.role === "master";
+
+  // Auto-update vehicle location based on booking schedule
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const nowStr = now.toISOString().slice(0, 10);
+      const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+      let changed = false;
+      const updated = vehicles.map(v => {
+        // Find a confirmed booking for this vehicle that has ended (endDate + returnTime <= now)
+        const active = bookings.find(b =>
+          b.vehicleId === v.id &&
+          b.status === "confirmed" &&
+          b.toCity &&
+          b.toLat &&
+          b.toLng &&
+          ((b.endDate || b.date) < nowStr ||
+           ((b.endDate || b.date) === nowStr && (b.returnTime || "23:59") <= nowTime))
+        );
+        if (active && active.toCity && active.toLat && active.toLng) {
+          if (v.currentLocation !== active.toCity) {
+            changed = true;
+            return {
+              ...v,
+              currentLocation: active.toCity,
+              currentLocationLat: active.toLat,
+              currentLocationLng: active.toLng,
+            };
+          }
+        }
+        return v;
+      });
+      if (changed) onVehiclesChange(updated);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [vehicles, bookings]);
+
+  function updateVehicle(v: Vehicle) {
+    onVehiclesChange(vehicles.map(x => x.id === v.id ? v : x));
+  }
 
   const partnerTabs: { id: Tab; label: string }[] = [
     { id: "dashboard", label: "Dashboard" },
     { id: "fleet", label: "Flotte" },
     { id: "bookings", label: "Ausbuchungen" },
     { id: "calendar", label: "Kalender" },
+    { id: "chat", label: "💬 Chat" },
   ];
 
   const masterTabs: { id: Tab; label: string }[] = [
@@ -47,42 +110,11 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
     { id: "fleet", label: "Flotte" },
     { id: "bookings", label: "Buchungen" },
     { id: "calendar", label: "Kalender" },
+    { id: "chat", label: "💬 Chat" },
     { id: "verwaltung", label: "Verwaltung" },
   ];
 
   const tabs = isMaster ? masterTabs : partnerTabs;
-
-  function updateVehicle(v: Vehicle) {
-    setVehicles(prev => prev.map(x => x.id === v.id ? v : x));
-  }
-
-  function handleAddVehicle(v: Vehicle) {
-    setVehicles(prev => [...prev, v]);
-  }
-
-  function handleDeleteVehicle(id: string) {
-    setVehicles(prev => prev.filter(v => v.id !== id));
-  }
-
-  function handleAddPartner(p: Partner) {
-    onPartnersChange([...partners, p]);
-  }
-
-  function handleDeletePartner(id: string) {
-    onPartnersChange(partners.filter(p => p.id !== id));
-  }
-
-  function handleUpdatePartner(p: Partner) {
-    onPartnersChange(partners.map(x => x.id === p.id ? p : x));
-  }
-
-  function handleAddDriver(d: Driver) {
-    setDrivers(prev => [...prev, d]);
-  }
-
-  function handleDeleteDriver(id: string) {
-    setDrivers(prev => prev.filter(d => d.id !== id));
-  }
 
   return (
     <div className="min-h-screen bg-black flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -135,6 +167,7 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
         </div>
       </header>
 
+      {/* Mobile tabs */}
       <div className="md:hidden flex overflow-x-auto border-b border-white/[0.06] bg-[#050505]">
         {tabs.map(tab => (
           <button
@@ -152,9 +185,10 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
       <div className="flex-1 overflow-auto">
         {activeTab === "planung" && isMaster && (
           <div className="p-6">
-            <DispatchPlanner vehicles={vehicles} bookings={bookings} onUpdateVehicle={updateVehicle} onUpdateBookings={setBookings} />
+            <DispatchPlanner vehicles={vehicles} bookings={bookings} onUpdateVehicle={updateVehicle} onUpdateBookings={onBookingsChange} />
           </div>
         )}
+
         {activeTab === "dashboard" && (
           <div className="p-6 space-y-6">
             <StatsBar vehicles={vehicles} bookings={bookings} isMaster={isMaster} />
@@ -162,31 +196,55 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
               <div className="lg:col-span-2">
                 <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={isMaster} onUpdateVehicle={updateVehicle} />
               </div>
-              <div>
+              <div className="space-y-4">
+                {/* Vehicle location selector for fuel */}
+                <div className="gold-border rounded-xl p-4">
+                  <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">Tankpreise für</p>
+                  <select
+                    value={fuelVehicleId}
+                    onChange={e => setFuelVehicleId(e.target.value)}
+                    className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-white text-xs outline-none focus:border-yellow-500/40 appearance-none"
+                  >
+                    <option value="__depot" className="bg-black">📍 Depot ({depot.name})</option>
+                    {vehicles.map(v => (
+                      <option key={v.id} value={v.id} className="bg-black">
+                        🚌 {v.name} {v.currentLocation ? `· ${v.currentLocation}` : "(kein Standort)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <FuelWidget prices={prices} lastUpdate={lastUpdate} stationName={stationName} isLive={isLive} />
               </div>
             </div>
-            <div>
-              <FuelAdvisor fuelTip={fuelTip} stations={stations} depot={depot} isLive={isLive} />
-            </div>
-            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={setBookings} limit={8} title="Letzte Buchungen" />
+            <FuelAdvisor fuelTip={fuelTip} stations={stations} depot={fuelDepot} isLive={isLive} />
+            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} limit={8} title="Letzte Buchungen" />
           </div>
         )}
+
         {activeTab === "fleet" && (
           <div className="p-6">
             <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={isMaster} onUpdateVehicle={updateVehicle} expanded />
           </div>
         )}
+
         {activeTab === "bookings" && (
           <div className="p-6">
-            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={setBookings} title="Alle Ausbuchungen" />
+            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} title="Alle Ausbuchungen" />
           </div>
         )}
+
         {activeTab === "calendar" && (
           <div className="p-6">
-            <BookingCalendar vehicles={vehicles} bookings={bookings} onUpdateBookings={setBookings} isMaster={isMaster} />
+            <BookingCalendar vehicles={vehicles} bookings={bookings} onUpdateBookings={onBookingsChange} isMaster={isMaster} />
           </div>
         )}
+
+        {activeTab === "chat" && (
+          <div className="p-6">
+            <Messenger session={session} partners={partners} />
+          </div>
+        )}
+
         {activeTab === "verwaltung" && isMaster && (
           <div className="p-6">
             <AdminPanel
@@ -194,15 +252,15 @@ export default function Dashboard({ session, onLogout, partners, onPartnersChang
               partners={partners}
               drivers={drivers}
               depot={depot}
-              onDepotChange={setDepot}
-              onAddVehicle={handleAddVehicle}
-              onDeleteVehicle={handleDeleteVehicle}
+              onDepotChange={onDepotChange}
+              onAddVehicle={v => onVehiclesChange([...vehicles, v])}
+              onDeleteVehicle={id => onVehiclesChange(vehicles.filter(v => v.id !== id))}
               onUpdateVehicle={updateVehicle}
-              onAddPartner={handleAddPartner}
-              onDeletePartner={handleDeletePartner}
-              onUpdatePartner={handleUpdatePartner}
-              onAddDriver={handleAddDriver}
-              onDeleteDriver={handleDeleteDriver}
+              onAddPartner={p => onPartnersChange([...partners, p])}
+              onDeletePartner={id => onPartnersChange(partners.filter(p => p.id !== id))}
+              onUpdatePartner={p => onPartnersChange(partners.map(x => x.id === p.id ? p : x))}
+              onAddDriver={d => onDriversChange([...drivers, d])}
+              onDeleteDriver={id => onDriversChange(drivers.filter(d => d.id !== id))}
             />
           </div>
         )}
