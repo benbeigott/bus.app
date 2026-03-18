@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { type Vehicle, type Booking } from "@/lib/data";
+import { calcRoute, formatDuration } from "@/lib/routeCalc";
 
 interface Props {
   vehicles: Vehicle[];
@@ -64,6 +65,9 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
   const [modalCustomer, setModalCustomer]   = useState("");
   const [modalPrice, setModalPrice]         = useState("");
   const [modalTravelInfo, setModalTravelInfo] = useState("");
+  const [routeLoading, setRouteLoading]     = useState(false);
+  const [routeInfo, setRouteInfo]           = useState<{ distanceKm: number; durationMin: number; fromCity: string; toCity: string; fromLat: number; fromLng: number; toLat: number; toLng: number } | null>(null);
+  const routeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const colorMap = useMemo(() => {
     const m: Record<string, (typeof VEHICLE_COLORS)[number]> = {};
@@ -108,12 +112,30 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
     setModalEndTime("");
     setModalVehicleId(selectedVehicle !== "all" ? selectedVehicle : vehicles[0]?.id || "");
     setModalRoute(""); setModalCustomer(""); setModalPrice(""); setModalTravelInfo("");
+    setRouteInfo(null); setRouteLoading(false);
     setShowModal(true);
   }
 
-  function handleModalSubmit(e: React.FormEvent) {
+  function handleRouteChange(val: string) {
+    setModalRoute(val);
+    setRouteInfo(null);
+    if (routeTimeout.current) clearTimeout(routeTimeout.current);
+    if (!val.includes("→") && !val.includes("->")) return;
+    routeTimeout.current = setTimeout(async () => {
+      setRouteLoading(true);
+      const result = await calcRoute(val);
+      setRouteLoading(false);
+      setRouteInfo(result);
+    }, 800);
+  }
+
+  async function handleModalSubmit(e: React.FormEvent) {
     e.preventDefault();
     const endDate = modalEndDate && modalEndDate >= modalStartDate ? modalEndDate : undefined;
+    let routeData = routeInfo;
+    if (!routeData && modalRoute.includes("→")) {
+      routeData = await calcRoute(modalRoute);
+    }
     const newBooking: Booking = {
       id: `b${Date.now()}`,
       vehicleId: modalVehicleId,
@@ -127,6 +149,16 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
       seats: 0,
       status: "pending",
       travelInfo: modalTravelInfo || undefined,
+      ...(routeData ? {
+        distanceKm: routeData.distanceKm,
+        durationMin: routeData.durationMin,
+        fromCity: routeData.fromCity,
+        toCity: routeData.toCity,
+        fromLat: routeData.fromLat,
+        fromLng: routeData.fromLng,
+        toLat: routeData.toLat,
+        toLng: routeData.toLng,
+      } : {}),
     };
     onUpdateBookings([...bookings, newBooking]);
     setShowModal(false);
@@ -445,11 +477,25 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                 <input
                   type="text"
                   value={modalRoute}
-                  onChange={e => setModalRoute(e.target.value)}
+                  onChange={e => handleRouteChange(e.target.value)}
                   placeholder="z.B. Mainz → Paris"
                   className="w-full px-3 py-2.5 bg-black border border-white/10 rounded-lg text-white text-sm outline-none focus:border-yellow-500/40 placeholder-zinc-700"
                   required
                 />
+                {routeLoading && (
+                  <p className="text-[10px] text-zinc-600 animate-pulse">⏳ Route wird berechnet...</p>
+                )}
+                {routeInfo && !routeLoading && (
+                  <div className="flex items-center gap-3 py-2 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <span className="text-emerald-400 text-sm">🗺</span>
+                    <div className="flex-1">
+                      <span className="text-xs text-emerald-400 font-semibold">
+                        {routeInfo.distanceKm} km · {formatDuration(routeInfo.durationMin)}
+                      </span>
+                      <p className="text-[10px] text-zinc-600">{routeInfo.fromCity} → {routeInfo.toCity}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Customer */}
