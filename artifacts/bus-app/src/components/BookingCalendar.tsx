@@ -386,9 +386,9 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                   {!isMaster && b.price > 0 && b.createdBy === currentPartnerId && (
                     <span className="text-xs text-yellow-500 font-bold tabular-nums">€ {b.price.toLocaleString("de-DE")}</span>
                   )}
-                  {isMaster && (
+                  {(isMaster || (!isMaster && b.createdBy === currentPartnerId && b.status !== "cancelled")) && (
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                      {b.status !== "confirmed" && (
+                      {isMaster && b.status !== "confirmed" && (
                         <button
                           onClick={() => confirmBooking(b.id)}
                           className="text-[10px] px-2 py-0.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/40 border border-green-500/30 transition-all font-semibold"
@@ -522,31 +522,32 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
               </div>
 
               {/* Action buttons */}
-              {b.status !== "cancelled" && isMaster ? (
-                <div className="flex gap-3">
-                  <button onClick={() => setSelectedBooking(null)}
-                    className="flex-1 py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all">
-                    Schließen
-                  </button>
-                  {b.status !== "confirmed" && (
-                    <button
-                      onClick={() => confirmBooking(b.id)}
-                      className="flex-1 py-2.5 bg-green-600/80 hover:bg-green-600 text-white font-bold rounded-lg text-sm transition-all border border-green-500/40">
-                      ✓ Bestätigen
+              {(() => {
+                const canCancel = b.status !== "cancelled" && (isMaster || b.createdBy === currentPartnerId);
+                const canConfirm = isMaster && b.status !== "confirmed" && b.status !== "cancelled";
+                return (
+                  <div className="flex gap-3">
+                    <button onClick={() => setSelectedBooking(null)}
+                      className="flex-1 py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all">
+                      Schließen
                     </button>
-                  )}
-                  <button
-                    onClick={() => cancelBooking(b.id)}
-                    className="flex-1 py-2.5 bg-red-700/60 hover:bg-red-700/80 text-red-200 font-bold rounded-lg text-sm transition-all border border-red-500/30">
-                    ✗ Stornieren
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => setSelectedBooking(null)}
-                  className="w-full py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all">
-                  Schließen
-                </button>
-              )}
+                    {canConfirm && (
+                      <button
+                        onClick={() => confirmBooking(b.id)}
+                        className="flex-1 py-2.5 bg-green-600/80 hover:bg-green-600 text-white font-bold rounded-lg text-sm transition-all border border-green-500/40">
+                        ✓ Bestätigen
+                      </button>
+                    )}
+                    {canCancel && (
+                      <button
+                        onClick={() => cancelBooking(b.id)}
+                        className="flex-1 py-2.5 bg-red-700/60 hover:bg-red-700/80 text-red-200 font-bold rounded-lg text-sm transition-all border border-red-500/30">
+                        ✗ Stornieren
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         );
