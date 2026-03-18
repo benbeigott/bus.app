@@ -217,7 +217,7 @@ export default function Dashboard({
               </div>
             </div>
             <FuelAdvisor fuelTip={fuelTip} stations={stations} depot={fuelDepot} isLive={isLive} />
-            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} limit={8} title="Letzte Buchungen" />
+            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} limit={8} title="Letzte Buchungen" currentPartnerId={session.partnerId} />
           </div>
         )}
 
@@ -229,13 +229,13 @@ export default function Dashboard({
 
         {activeTab === "bookings" && (
           <div className="p-6">
-            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} title="Alle Ausbuchungen" />
+            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} title="Alle Ausbuchungen" currentPartnerId={session.partnerId} />
           </div>
         )}
 
         {activeTab === "calendar" && (
           <div className="p-6">
-            <BookingCalendar vehicles={vehicles} bookings={bookings} onUpdateBookings={onBookingsChange} isMaster={isMaster} />
+            <BookingCalendar vehicles={vehicles} bookings={bookings} onUpdateBookings={onBookingsChange} isMaster={isMaster} currentPartnerId={session.partnerId} />
           </div>
         )}
 
