@@ -78,10 +78,6 @@ export function getLiveFuelPrices(): FuelPrice[] {
   });
 }
 
-export const PARTNERS = [
-  { id: "MZ001", code: "bus2026", name: "Müller Reisen GmbH", role: "partner" as const },
-  { id: "WI002", code: "flotte22", name: "Rhein Buspark", role: "partner" as const },
-  { id: "FRA03", code: "fahrer99", name: "FrankenBus KG", role: "partner" as const },
-];
+export const PARTNERS: { id: string; code: string; name: string; role: "partner" }[] = [];
 
 export const MASTER_CODE = "master2026";
