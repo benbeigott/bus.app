@@ -346,6 +346,16 @@ export default function AdminPanel({
                         <p className="text-sm font-semibold text-white">{v.name}</p>
                         <p className="text-xs text-zinc-500">{v.plate} · {v.type} · {v.seats} Sitze</p>
                         <p className={`text-xs mt-0.5 ${STATUS_COLORS[v.status] || "text-zinc-500"}`}>{STATUS_LABELS[v.status] || v.status}</p>
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <span className="text-[10px] text-zinc-600">📍</span>
+                          <input
+                            type="text"
+                            value={v.currentLocation || ""}
+                            onChange={e => onUpdateVehicle({ ...v, currentLocation: e.target.value })}
+                            placeholder="Aktueller Standort (Stadt)"
+                            className="flex-1 text-[11px] bg-transparent border-b border-white/[0.08] text-zinc-400 placeholder-zinc-700 outline-none focus:border-yellow-500/40 py-0.5"
+                          />
+                        </div>
                       </div>
 
                       {/* Actions */}
