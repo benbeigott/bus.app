@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { type UserSession, type Partner } from "@/App";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useStore } from "@/hooks/useStore";
 
 interface ChatMessage {
   id: string;
@@ -29,7 +29,7 @@ function formatTime(ts: number) {
 }
 
 export default function Messenger({ session, partners }: Props) {
-  const [messages, setMessages] = useLocalStorage<ChatMessage[]>("bd_messages", []);
+  const [messages, setMessages] = useStore<ChatMessage[]>("messages", []);
   const [activeConv, setActiveConv] = useState<string | null>("group");
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
