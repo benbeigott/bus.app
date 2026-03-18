@@ -54,7 +54,19 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedVehicle, setSelectedVehicle] = useState<string>("all");
 
-  // Modal state
+  // Detail modal
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+  function confirmBooking(id: string) {
+    onUpdateBookings(bookings.map(b => b.id === id ? { ...b, status: "confirmed" } : b));
+    setSelectedBooking(prev => prev?.id === id ? { ...prev, status: "confirmed" } : prev);
+  }
+  function cancelBooking(id: string) {
+    onUpdateBookings(bookings.map(b => b.id === id ? { ...b, status: "cancelled" } : b));
+    setSelectedBooking(null);
+  }
+
+  // New booking modal state
   const [showModal, setShowModal]           = useState(false);
   const [modalVehicleId, setModalVehicleId] = useState(vehicles[0]?.id || "");
   const [modalStartDate, setModalStartDate] = useState("");
@@ -288,9 +300,10 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                       return (
                         <div
                           key={b.id}
+                          onClick={e => { e.stopPropagation(); setSelectedBooking(b); }}
                           className={`
                             ${c.bg} ${c.text} ${c.solid}
-                            text-[9px] leading-none px-1 py-1 font-medium
+                            text-[9px] leading-none px-1 py-1 font-medium cursor-pointer
                             ${roundLeft  ? "rounded-l-md ml-0.5" : "-ml-0"}
                             ${roundRight ? "rounded-r-md mr-0.5" : "mr-0"}
                             ${!roundLeft && !roundRight ? "ml-0 mr-0" : ""}
@@ -298,8 +311,9 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                             ${pos === "single" ? "mx-0.5" : ""}
                             border-l-2 ${c.border}
                             ${pos === "middle" || pos === "end" ? "border-l-0" : ""}
+                            hover:brightness-125 transition-all
                           `}
-                          style={{ opacity: pos === "middle" ? 0.85 : 1 }}
+                          style={{ opacity: b.status === "confirmed" ? 1 : pos === "middle" ? 0.85 : 0.9 }}
                           title={`${b.route} — ${b.customer}${b.endDate ? ` (bis ${b.endDate})` : ""}`}
                         >
                           {showLabel && (
@@ -339,7 +353,8 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
             const c = colorMap[b.vehicleId] || VEHICLE_COLORS[0];
             const dur = b.endDate ? calcDuration(b.date, b.departureTime || "", b.endDate, b.returnTime || "") : null;
             return (
-              <div key={b.id} className={`flex items-start gap-3 p-3 rounded-lg border-l-2 ${c.border} ${c.bg}`}>
+              <div key={b.id} className={`flex items-start gap-3 p-3 rounded-lg border-l-2 ${c.border} ${c.bg} cursor-pointer hover:bg-white/[0.03] transition-all`}
+                onClick={() => setSelectedBooking(b)}>
                 <div className="flex-shrink-0 w-28 text-right">
                   <div className="text-xs text-zinc-300 tabular-nums font-semibold">{b.date}</div>
                   {b.departureTime && (
@@ -362,12 +377,26 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                   <p className="text-[10px] text-zinc-500 mt-0.5">{b.customer}</p>
                   {v && <p className="text-[10px] text-zinc-600 mt-0.5">{v.name}</p>}
                 </div>
-                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${b.status === "confirmed" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                    {b.status === "confirmed" ? "Bestätigt" : "Ausstehend"}
+                    {b.status === "confirmed" ? "✓ Bestätigt" : "⏳ Ausstehend"}
                   </span>
                   {isMaster && b.price > 0 && (
                     <span className="text-xs text-yellow-500 font-bold tabular-nums">€ {b.price.toLocaleString("de-DE")}</span>
+                  )}
+                  {isMaster && (
+                    <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                      {b.status !== "confirmed" && (
+                        <button
+                          onClick={() => confirmBooking(b.id)}
+                          className="text-[10px] px-2 py-0.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/40 border border-green-500/30 transition-all font-semibold"
+                        >✓ Bestätigen</button>
+                      )}
+                      <button
+                        onClick={() => cancelBooking(b.id)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/30 transition-all font-semibold"
+                      >✗ Stornieren</button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -378,6 +407,148 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
           )}
         </div>
       </div>
+
+      {/* Cancelled bookings archive */}
+      {bookings.some(b => b.status === "cancelled") && (() => {
+        const cancelledMonth = bookings.filter(b => {
+          if (b.status !== "cancelled") return false;
+          const end = b.endDate || b.date;
+          const mStr = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
+          return b.date.startsWith(mStr) || end.startsWith(mStr);
+        }).sort((a, b) => a.date.localeCompare(b.date));
+        if (cancelledMonth.length === 0) return null;
+        return (
+          <div className="mt-4 border border-red-500/15 rounded-xl p-5 bg-red-500/[0.03]">
+            <p className="text-xs text-red-500/60 uppercase tracking-widest mb-3">Stornierte Fahrten ({cancelledMonth.length})</p>
+            <div className="space-y-2">
+              {cancelledMonth.map(b => {
+                const v = vehicles.find(x => x.id === b.vehicleId);
+                return (
+                  <div key={b.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-red-500/10 bg-red-500/[0.04] opacity-60">
+                    <div className="flex-shrink-0">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-semibold">✗ Storniert</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-zinc-400 line-through truncate">{b.route}</p>
+                      <p className="text-[10px] text-zinc-600">{b.customer} · {b.date}{b.endDate && b.endDate !== b.date ? ` → ${b.endDate}` : ""}</p>
+                      {v && <p className="text-[10px] text-zinc-700">{v.name} — jetzt frei</p>}
+                    </div>
+                    {isMaster && b.price > 0 && (
+                      <span className="text-xs text-zinc-600 tabular-nums line-through">€ {b.price.toLocaleString("de-DE")}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Booking Detail Modal */}
+      {selectedBooking && (() => {
+        const b = selectedBooking;
+        const v = vehicles.find(x => x.id === b.vehicleId);
+        const c = colorMap[b.vehicleId] || VEHICLE_COLORS[0];
+        const dur = b.endDate ? calcDuration(b.date, b.departureTime || "", b.endDate, b.returnTime || "") : null;
+        return (
+          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setSelectedBooking(null)}>
+            <div className="gold-border rounded-2xl p-6 w-full max-w-md bg-[#080808] relative" onClick={e => e.stopPropagation()}>
+              <div className="corner-tl" /><div className="corner-tr" />
+              <div className="corner-bl" /><div className="corner-br" />
+
+              {/* Status badge top */}
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-xs text-zinc-500 uppercase tracking-widest">Buchungsdetail</p>
+                  <h3 className="text-lg font-bold text-white mt-0.5">{b.route}</h3>
+                </div>
+                <span className={`text-xs px-3 py-1.5 rounded-full font-semibold border ${
+                  b.status === "confirmed" ? "bg-green-500/20 text-green-400 border-green-500/30" :
+                  b.status === "cancelled" ? "bg-red-500/20 text-red-400 border-red-500/30" :
+                  "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                }`}>
+                  {b.status === "confirmed" ? "✓ Bestätigt" : b.status === "cancelled" ? "✗ Storniert" : "⏳ Ausstehend"}
+                </span>
+              </div>
+
+              {/* Info grid */}
+              <div className={`rounded-xl border-l-4 ${c.border} ${c.bg} p-4 space-y-2.5 mb-5`}>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Abfahrt</p>
+                    <p className="text-white font-semibold">{b.date}{b.departureTime ? ` · ${b.departureTime} Uhr` : ""}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Rückkehr</p>
+                    <p className="text-white font-semibold">{b.endDate || b.date}{b.returnTime ? ` · ${b.returnTime} Uhr` : ""}</p>
+                  </div>
+                </div>
+                {dur && (
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Dauer</p>
+                    <p className="text-yellow-400 font-semibold text-xs">{dur}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Kunde</p>
+                  <p className="text-white text-xs font-semibold">{b.customer}</p>
+                </div>
+                {v && (
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Fahrzeug</p>
+                    <p className="text-white text-xs">{v.name} · {v.plate}</p>
+                  </div>
+                )}
+                {b.distanceKm && (
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Strecke</p>
+                    <p className="text-white text-xs">{b.distanceKm} km</p>
+                  </div>
+                )}
+                {b.price > 0 && isMaster && (
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Preis</p>
+                    <p className="text-yellow-500 font-bold text-sm">€ {b.price.toLocaleString("de-DE")}</p>
+                  </div>
+                )}
+                {b.travelInfo && (
+                  <div>
+                    <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Reiseinfos</p>
+                    <p className="text-zinc-300 text-xs">{b.travelInfo}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              {b.status !== "cancelled" && isMaster ? (
+                <div className="flex gap-3">
+                  <button onClick={() => setSelectedBooking(null)}
+                    className="flex-1 py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all">
+                    Schließen
+                  </button>
+                  {b.status !== "confirmed" && (
+                    <button
+                      onClick={() => confirmBooking(b.id)}
+                      className="flex-1 py-2.5 bg-green-600/80 hover:bg-green-600 text-white font-bold rounded-lg text-sm transition-all border border-green-500/40">
+                      ✓ Bestätigen
+                    </button>
+                  )}
+                  <button
+                    onClick={() => cancelBooking(b.id)}
+                    className="flex-1 py-2.5 bg-red-700/60 hover:bg-red-700/80 text-red-200 font-bold rounded-lg text-sm transition-all border border-red-500/30">
+                    ✗ Stornieren
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setSelectedBooking(null)}
+                  className="w-full py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all">
+                  Schließen
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* New Booking Modal */}
       {showModal && (
