@@ -1,17 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+// On Vercel: calls /api/store  (same origin)
+// On Replit dev: also calls /api/store — but there the Vercel function isn't
+// running, so it falls back to localStorage only in dev.
 const API_BASE = "/api/store";
-const POLL_INTERVAL = 8000;
+const POLL_MS  = 10_000;
 
-async function apiGet<T>(key: string): Promise<T | null> {
+/* ─── API helpers ─────────────────────────────────────────────────────── */
+async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: false }> {
   try {
-    const res = await fetch(`${API_BASE}?key=${key}`);
-    if (!res.ok) return null;
-    return await res.json() as T;
-  } catch { return null; }
+    const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, { cache: "no-store" });
+    if (!res.ok) return { ok: false };
+    const data = await res.json() as T;
+    return { ok: true, data };
+  } catch {
+    return { ok: false };
+  }
 }
 
-async function apiPost(key: string, value: unknown): Promise<boolean> {
+async function apiSet(key: string, value: unknown): Promise<boolean> {
   try {
     const res = await fetch(API_BASE, {
       method: "POST",
@@ -19,77 +26,96 @@ async function apiPost(key: string, value: unknown): Promise<boolean> {
       body: JSON.stringify({ value }),
     });
     return res.ok;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
-function lsGet<T>(key: string, fallback: T): T {
+/* ─── localStorage helpers (fallback only) ────────────────────────────── */
+function lsRead<T>(key: string): T | null {
   try {
-    const s = localStorage.getItem(`bd_${key}`);
-    return s ? (JSON.parse(s) as T) : fallback;
-  } catch { return fallback; }
+    const s = localStorage.getItem(`bd_cache_${key}`);
+    return s ? (JSON.parse(s) as T) : null;
+  } catch { return null; }
+}
+function lsWrite(key: string, value: unknown) {
+  try { localStorage.setItem(`bd_cache_${key}`, JSON.stringify(value)); } catch {}
 }
 
-function lsSet(key: string, value: unknown) {
-  try { localStorage.setItem(`bd_${key}`, JSON.stringify(value)); } catch {}
-}
+/* ─── Main hook ────────────────────────────────────────────────────────── */
+export function useStore<T>(
+  key: string,
+  initial: T
+): [T, (val: T | ((prev: T) => T)) => void, boolean] {
 
-export function useStore<T>(key: string, initial: T): [T, (val: T | ((prev: T) => T)) => void, boolean] {
-  const [data, setData] = useState<T>(() => lsGet(key, initial));
-  const [synced, setSynced] = useState(false);
-  const pendingRef = useRef<T | null>(null);
-  const isMounted = useRef(true);
+  // Start immediately from the local cache if available, else initial
+  const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
+  const [loaded, setLoaded] = useState(false);
+  const mounted = useRef(true);
 
-  // Load from API on mount
+  /* Load from API on mount — DB is the single source of truth */
   useEffect(() => {
-    isMounted.current = true;
-    apiGet<T>(key).then(remote => {
-      if (!isMounted.current) return;
-      if (remote !== null && Array.isArray(remote) && (remote as unknown[]).length >= 0) {
-        const local = lsGet<T>(key, initial);
-        // Use remote if it has data, otherwise keep local (migration: push local to remote)
-        if (Array.isArray(remote) && remote.length === 0 && Array.isArray(local) && local.length > 0) {
-          // Push local data to remote
-          apiPost(key, local);
-          setData(local);
-        } else {
+    mounted.current = true;
+
+    apiGet<T>(key).then(result => {
+      if (!mounted.current) return;
+      if (result.ok) {
+        // Only replace with API data if it's non-null/non-empty,
+        // OR if we have no local data at all.
+        const remote = result.data;
+        const isEmpty =
+          remote === null ||
+          remote === undefined ||
+          (Array.isArray(remote) && (remote as unknown[]).length === 0);
+
+        if (!isEmpty) {
+          // DB has data → always trust the DB
           setData(remote);
-          lsSet(key, remote);
+          lsWrite(key, remote);
+        } else {
+          // DB is empty → push local data to DB so it survives next load
+          const local = lsRead<T>(key);
+          if (local !== null) {
+            apiSet(key, local); // persist local → DB
+            setData(local);
+          }
+          // else: stay with `initial`
         }
       }
-      setSynced(true);
+      // API failed → stay with local cache, no overwrite
+      setLoaded(true);
     });
-    return () => { isMounted.current = false; };
+
+    return () => { mounted.current = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  // Poll for remote changes
+  /* Poll for changes from other devices */
   useEffect(() => {
+    if (!loaded) return;
     const timer = setInterval(async () => {
-      if (!isMounted.current) return;
-      const remote = await apiGet<T>(key);
-      if (remote !== null && isMounted.current) {
-        setData(prev => {
-          const prevStr = JSON.stringify(prev);
-          const remoteStr = JSON.stringify(remote);
-          if (prevStr !== remoteStr) {
-            lsSet(key, remote);
-            return remote;
-          }
-          return prev;
-        });
-      }
-    }, POLL_INTERVAL);
+      if (!mounted.current) return;
+      const result = await apiGet<T>(key);
+      if (!mounted.current || !result.ok) return;
+      const remote = result.data;
+      setData(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(remote)) return prev;
+        lsWrite(key, remote);
+        return remote;
+      });
+    }, POLL_MS);
     return () => clearInterval(timer);
-  }, [key]);
+  }, [key, loaded]);
 
-  const setStored = useCallback((val: T | ((prev: T) => T)) => {
+  /* Write: update state + local cache + DB atomically */
+  const setState = useCallback((val: T | ((prev: T) => T)) => {
     setData(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
-      lsSet(key, next);
-      // Push to API immediately
-      apiPost(key, next);
+      lsWrite(key, next);
+      apiSet(key, next); // fire-and-forget
       return next;
     });
   }, [key]);
 
-  return [data, setStored, synced];
+  return [data, setState, loaded];
 }
