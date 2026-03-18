@@ -8,6 +8,7 @@ const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
 
 const basePath = process.env.BASE_PATH ?? "/";
+const isProd = process.env.NODE_ENV === "production";
 
 export default defineConfig({
   base: basePath,
@@ -44,14 +45,25 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist", "public"),
     emptyOutDir: true,
+    sourcemap: false,
+    minify: "esbuild",
     rollupOptions: {
       output: {
-        entryFileNames: "assets/[name]-[hash]-v2.js",
-        chunkFileNames: "assets/[name]-[hash]-v2.js",
-        assetFileNames: "assets/[name]-[hash].[ext]",
+        entryFileNames: "assets/[hash].js",
+        chunkFileNames: "assets/[hash].js",
+        assetFileNames: "assets/[hash].[ext]",
       },
     },
   },
+  esbuild: isProd
+    ? {
+        drop: ["console", "debugger"],
+        legalComments: "none",
+        minifyIdentifiers: true,
+        minifySyntax: true,
+        minifyWhitespace: true,
+      }
+    : {},
   server: {
     port,
     host: "0.0.0.0",
