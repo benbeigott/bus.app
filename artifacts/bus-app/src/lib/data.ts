@@ -10,6 +10,9 @@ export interface Vehicle {
   fuelLevel: number;
   mileage: number;
   images?: string[];
+  currentLocation?: string;
+  currentLocationLat?: number;
+  currentLocationLng?: number;
 }
 
 export interface Driver {
@@ -32,6 +35,14 @@ export interface Booking {
   seats: number;
   contact?: string;
   travelInfo?: string;
+  distanceKm?: number;
+  durationMin?: number;
+  fromCity?: string;
+  toCity?: string;
+  fromLat?: number;
+  fromLng?: number;
+  toLat?: number;
+  toLng?: number;
 }
 
 export interface FuelPrice {
