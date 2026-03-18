@@ -26,7 +26,7 @@ export interface Partner {
 function App() {
   const [session, setSession] = useState<UserSession | null>(null);
 
-  const [partners, setPartners] = useStore<Partner[]>("partners", PARTNERS);
+  const [partners, setPartners, partnersLoaded] = useStore<Partner[]>("partners", PARTNERS);
   const [vehicles, setVehicles] = useStore<Vehicle[]>("vehicles", INITIAL_VEHICLES);
   const [bookings, setBookings] = useStore<Booking[]>("bookings", INITIAL_BOOKINGS);
   const [drivers, setDrivers] = useStore<Driver[]>("drivers", INITIAL_DRIVERS);
@@ -35,7 +35,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       {!session ? (
-        <LoginScreen onLogin={setSession} partners={partners} />
+        <LoginScreen onLogin={setSession} partners={partners} partnersLoaded={partnersLoaded} />
       ) : (
         <Dashboard
           session={session}
