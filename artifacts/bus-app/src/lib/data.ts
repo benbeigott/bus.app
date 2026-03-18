@@ -43,6 +43,7 @@ export interface Booking {
   fromLng?: number;
   toLat?: number;
   toLng?: number;
+  createdBy?: string;
 }
 
 export interface FuelPrice {
