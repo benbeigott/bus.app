@@ -20,7 +20,7 @@ async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: fal
 
 async function apiSet(key: string, value: unknown): Promise<boolean> {
   try {
-    const res = await fetch(API_BASE, {
+    const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value }),
