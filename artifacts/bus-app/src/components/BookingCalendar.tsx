@@ -7,6 +7,7 @@ interface Props {
   bookings: Booking[];
   onUpdateBookings: (b: Booking[]) => void;
   isMaster: boolean;
+  currentPartnerId?: string;
 }
 
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -48,7 +49,7 @@ function getBookingPosition(b: Booking, dateStr: string): BookingPos | null {
   return "middle";
 }
 
-export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, isMaster }: Props) {
+export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, isMaster, currentPartnerId }: Props) {
   const today = new Date();
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -161,6 +162,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
       seats: 0,
       status: "pending",
       travelInfo: modalTravelInfo || undefined,
+      createdBy: currentPartnerId || undefined,
       ...(routeData ? {
         distanceKm: routeData.distanceKm,
         durationMin: routeData.durationMin,
@@ -381,7 +383,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${b.status === "confirmed" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
                     {b.status === "confirmed" ? "✓ Bestätigt" : "⏳ Ausstehend"}
                   </span>
-                  {isMaster && b.price > 0 && (
+                  {!isMaster && b.price > 0 && b.createdBy === currentPartnerId && (
                     <span className="text-xs text-yellow-500 font-bold tabular-nums">€ {b.price.toLocaleString("de-DE")}</span>
                   )}
                   {isMaster && (
@@ -433,7 +435,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                       <p className="text-[10px] text-zinc-600">{b.customer} · {b.date}{b.endDate && b.endDate !== b.date ? ` → ${b.endDate}` : ""}</p>
                       {v && <p className="text-[10px] text-zinc-700">{v.name} — jetzt frei</p>}
                     </div>
-                    {isMaster && b.price > 0 && (
+                    {!isMaster && b.price > 0 && b.createdBy === currentPartnerId && (
                       <span className="text-xs text-zinc-600 tabular-nums line-through">€ {b.price.toLocaleString("de-DE")}</span>
                     )}
                   </div>
@@ -505,7 +507,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                     <p className="text-white text-xs">{b.distanceKm} km</p>
                   </div>
                 )}
-                {b.price > 0 && isMaster && (
+                {b.price > 0 && !isMaster && b.createdBy === currentPartnerId && (
                   <div>
                     <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Preis</p>
                     <p className="text-yellow-500 font-bold text-sm">€ {b.price.toLocaleString("de-DE")}</p>
