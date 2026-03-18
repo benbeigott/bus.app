@@ -39,6 +39,10 @@ router.get("/store", async (req, res) => {
   const kvKey = "bd_" + key;
   try {
     const r = await kvRequest("GET", "/" + encodeURIComponent(kvKey));
+    if (r.status !== 200 && r.status !== 404) {
+      console.error("KV GET error status:", r.status, r.body.slice?.(0, 100));
+      return res.status(503).json({ error: "KV unavailable", status: r.status });
+    }
     if (r.status === 404 || r.body === "") {
       return res.json(key === "depot" ? null : []);
     }
@@ -57,7 +61,11 @@ router.post("/store", async (req, res) => {
   const kvKey = "bd_" + key;
   try {
     const encoded = encodeURIComponent(kvKey) + "=" + encodeURIComponent(JSON.stringify(value));
-    await kvRequest("POST", "", encoded);
+    const r = await kvRequest("POST", "", encoded);
+    if (r.status !== 200) {
+      console.error("KV POST error status:", r.status, r.body?.slice?.(0, 100));
+      return res.status(503).json({ error: "KV write failed", status: r.status });
+    }
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: err?.message });
