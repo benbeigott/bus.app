@@ -100,7 +100,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
   }
 
   function openNewBooking(day: number) {
-    if (!isMaster || isPast(day)) return;
+    if (isPast(day)) return;
     const ds = getDateStr(day);
     setModalStartDate(ds);
     setModalEndDate(ds);
@@ -287,7 +287,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                         </div>
                       );
                     })}
-                    {cellBookings.length === 0 && !pastFlag && isMaster && (
+                    {cellBookings.length === 0 && !pastFlag && (
                       <div className="text-[9px] text-zinc-700 mt-1 opacity-0 hover:opacity-100 transition-opacity">+ Buchen</div>
                     )}
                   </div>
