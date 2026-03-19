@@ -49,10 +49,24 @@ function getBookingPosition(b: Booking, dateStr: string): BookingPos | null {
   return "middle";
 }
 
+function getMonday(d: Date): Date {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(d);
+  m.setDate(d.getDate() + diff);
+  return m;
+}
+function dateToStr(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, isMaster, currentPartnerId }: Props) {
   const today = new Date();
+  const todayStr = dateToStr(today);
+  const [viewMode, setViewMode] = useState<"month" | "week">("month");
   const [viewYear, setViewYear]   = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewWeekStart, setViewWeekStart] = useState(() => dateToStr(getMonday(today)));
   const [selectedVehicle, setSelectedVehicle] = useState<string>("all");
 
   // Detail modal
@@ -95,6 +109,46 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
   function nextMonth() {
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
     else setViewMonth(m => m + 1);
+  }
+  function prevWeek() {
+    const d = new Date(viewWeekStart);
+    d.setDate(d.getDate() - 7);
+    setViewWeekStart(dateToStr(d));
+  }
+  function nextWeek() {
+    const d = new Date(viewWeekStart);
+    d.setDate(d.getDate() + 7);
+    setViewWeekStart(dateToStr(d));
+  }
+  const weekDays: string[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(viewWeekStart);
+    d.setDate(d.getDate() + i);
+    return dateToStr(d);
+  });
+  const weekEndStr = weekDays[6];
+  const weekStartDate = new Date(viewWeekStart);
+  const weekLabel = (() => {
+    const startD = weekStartDate.getDate();
+    const startM = MONTHS[weekStartDate.getMonth()];
+    const endD = new Date(weekEndStr).getDate();
+    const endM = MONTHS[new Date(weekEndStr).getMonth()];
+    const yr = new Date(weekEndStr).getFullYear();
+    if (startM === endM) return `${startD}. – ${endD}. ${startM} ${yr}`;
+    return `${startD}. ${startM} – ${endD}. ${endM} ${yr}`;
+  })();
+
+  function openNewBookingForDate(dateStr: string) {
+    const d = new Date(dateStr);
+    const todayD = new Date(todayStr);
+    if (d < todayD) return;
+    setModalStartDate(dateStr);
+    setModalEndDate(dateStr);
+    setModalStartTime("");
+    setModalEndTime("");
+    setModalVehicleId(selectedVehicle !== "all" ? selectedVehicle : vehicles[0]?.id || "");
+    setModalRoute(""); setModalCustomer(""); setModalPrice(""); setModalTravelInfo("");
+    setRouteInfo(null); setRouteLoading(false);
+    setShowModal(true);
   }
 
   const firstDay = new Date(viewYear, viewMonth, 1);
@@ -206,10 +260,21 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div>
-          <p className="text-xs text-zinc-500 uppercase tracking-widest">Planung & Ausbuchung</p>
+          <p className="text-xs text-zinc-500 uppercase tracking-widest">Planung & Buchung</p>
           <p className="text-xl font-bold text-white mt-0.5">Buchungskalender</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Month / Week toggle */}
+          <div className="flex rounded-lg border border-white/10 overflow-hidden">
+            <button
+              onClick={() => setViewMode("month")}
+              className={`px-3 py-1.5 text-xs font-semibold transition-all ${viewMode === "month" ? "bg-yellow-500/20 text-yellow-400 border-r border-yellow-500/20" : "text-zinc-500 hover:text-zinc-300 border-r border-white/10"}`}
+            >Monat</button>
+            <button
+              onClick={() => setViewMode("week")}
+              className={`px-3 py-1.5 text-xs font-semibold transition-all ${viewMode === "week" ? "bg-yellow-500/20 text-yellow-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            >Woche</button>
+          </div>
           <select
             value={selectedVehicle}
             onChange={e => setSelectedVehicle(e.target.value)}
@@ -219,9 +284,17 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
             {vehicles.map(v => <option key={v.id} value={v.id} className="bg-black">{v.name}</option>)}
           </select>
           <div className="flex items-center gap-2">
-            <button onClick={prevMonth} className="w-8 h-8 border border-white/10 rounded-lg flex items-center justify-center text-zinc-400 hover:text-yellow-500 hover:border-yellow-500/30 transition-all text-sm">‹</button>
-            <span className="text-sm font-semibold text-white w-36 text-center">{MONTHS[viewMonth]} {viewYear}</span>
-            <button onClick={nextMonth} className="w-8 h-8 border border-white/10 rounded-lg flex items-center justify-center text-zinc-400 hover:text-yellow-500 hover:border-yellow-500/30 transition-all text-sm">›</button>
+            <button
+              onClick={viewMode === "month" ? prevMonth : prevWeek}
+              className="w-8 h-8 border border-white/10 rounded-lg flex items-center justify-center text-zinc-400 hover:text-yellow-500 hover:border-yellow-500/30 transition-all text-sm"
+            >‹</button>
+            <span className="text-sm font-semibold text-white text-center min-w-[160px]">
+              {viewMode === "month" ? `${MONTHS[viewMonth]} ${viewYear}` : weekLabel}
+            </span>
+            <button
+              onClick={viewMode === "month" ? nextMonth : nextWeek}
+              className="w-8 h-8 border border-white/10 rounded-lg flex items-center justify-center text-zinc-400 hover:text-yellow-500 hover:border-yellow-500/30 transition-all text-sm"
+            >›</button>
           </div>
         </div>
       </div>
@@ -239,6 +312,117 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
         })}
       </div>
 
+      {/* WEEK VIEW */}
+      {viewMode === "week" && (
+        <div className="space-y-4">
+          <div className="gold-border rounded-xl overflow-hidden">
+            {/* Week day headers */}
+            <div className="grid grid-cols-7 border-b border-white/[0.06]">
+              {weekDays.map((ds, i) => {
+                const d = new Date(ds);
+                const isTodayW = ds === todayStr;
+                return (
+                  <div key={ds} className="py-3 text-center bg-[#050505] border-r border-white/[0.04] last:border-r-0">
+                    <div className="text-[10px] text-zinc-500 uppercase tracking-widest">{DOW[i]}</div>
+                    <div className={`text-sm font-bold mt-1 w-7 h-7 flex items-center justify-center rounded-full mx-auto
+                      ${isTodayW ? "bg-yellow-500 text-black" : "text-white"}`}>
+                      {d.getDate()}
+                    </div>
+                    <div className="text-[9px] text-zinc-600 mt-0.5">
+                      {String(d.getMonth() + 1).padStart(2, "0")}.{d.getFullYear()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* One row per vehicle */}
+            {(selectedVehicle === "all" ? vehicles : vehicles.filter(v => v.id === selectedVehicle)).map(v => {
+              const c = colorMap[v.id] || VEHICLE_COLORS[0];
+              return (
+                <div key={v.id} className="grid grid-cols-7 border-t border-white/[0.04]">
+                  {weekDays.map((ds, i) => {
+                    const dayBookings = visibleBookings.filter(b =>
+                      b.vehicleId === v.id && getBookingPosition(b, ds) !== null
+                    );
+                    const isPastDay = ds < todayStr;
+                    return (
+                      <div key={ds}
+                        onClick={() => !isPastDay && openNewBookingForDate(ds)}
+                        className={`min-h-[80px] p-1.5 border-r border-white/[0.04] last:border-r-0 transition-colors
+                          ${isPastDay ? "opacity-40" : "hover:bg-white/[0.02] cursor-pointer"}
+                          ${ds === todayStr ? "bg-yellow-500/[0.04]" : ""}
+                        `}
+                      >
+                        {i === 0 && (
+                          <div className="text-[9px] text-zinc-600 mb-1 truncate font-semibold">{v.name.split(" ").slice(0,2).join(" ")}</div>
+                        )}
+                        {dayBookings.map(b => (
+                          <div
+                            key={b.id}
+                            onClick={e => { e.stopPropagation(); setSelectedBooking(b); }}
+                            className={`mb-0.5 px-1.5 py-1 rounded text-[9px] leading-tight cursor-pointer border ${c.bg} ${c.border}
+                              ${b.status === "confirmed" ? "opacity-100" : "opacity-70"}`}
+                          >
+                            <div className="font-bold truncate">{b.route.split("→")[0]?.trim()}</div>
+                            <div className={`text-[8px] mt-0.5 ${b.status === "confirmed" ? "text-green-400" : "text-yellow-400"}`}>
+                              {b.status === "confirmed" ? "✓" : "⏳"} {b.customer}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Week booking list */}
+          <div className="gold-border rounded-xl p-5">
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-4">Fahrten diese Woche</p>
+            <div className="space-y-2">
+              {(() => {
+                const weekBookings = bookings
+                  .filter(b => {
+                    if (b.status === "cancelled") return false;
+                    if (selectedVehicle !== "all" && b.vehicleId !== selectedVehicle) return false;
+                    return weekDays.some(ds => getBookingPosition(b, ds) !== null);
+                  })
+                  .sort((a, b) => a.date.localeCompare(b.date));
+                if (weekBookings.length === 0) return (
+                  <p className="text-xs text-zinc-600 py-2">Keine Fahrten in dieser Woche.</p>
+                );
+                return weekBookings.map(b => {
+                  const v = vehicles.find(x => x.id === b.vehicleId);
+                  const c = colorMap[b.vehicleId] || VEHICLE_COLORS[0];
+                  return (
+                    <div key={b.id}
+                      onClick={() => setSelectedBooking(b)}
+                      className={`flex items-start gap-3 p-3 rounded-lg border-l-2 ${c.border} ${c.bg} cursor-pointer hover:bg-white/[0.03] transition-all`}>
+                      <div className="flex-shrink-0 w-24 text-right">
+                        <div className="text-xs text-zinc-300 tabular-nums font-semibold">{b.date}</div>
+                        {b.endDate && b.endDate !== b.date && <div className="text-[10px] text-zinc-500">bis {b.endDate}</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white font-semibold truncate">{b.route}</p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">{b.customer}</p>
+                        {v && <p className="text-[10px] text-zinc-600">{v.name}</p>}
+                      </div>
+                      <span className={`flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold
+                        ${b.status === "confirmed" ? "bg-green-500/20 text-green-400" : "bg-yellow-500/20 text-yellow-400"}`}>
+                        {b.status === "confirmed" ? "✓" : "⏳"}
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MONTH VIEW */}
+      {viewMode === "month" && <>
       {/* Calendar grid */}
       <div className="gold-border rounded-xl overflow-hidden">
         {/* Day of week header */}
@@ -409,9 +593,10 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
           )}
         </div>
       </div>
+      </>}
 
-      {/* Cancelled bookings archive */}
-      {bookings.some(b => b.status === "cancelled") && (() => {
+      {/* Cancelled bookings archive — month view only */}
+      {viewMode === "month" && bookings.some(b => b.status === "cancelled") && (() => {
         const cancelledMonth = bookings.filter(b => {
           if (b.status !== "cancelled") return false;
           const end = b.endDate || b.date;
@@ -516,7 +701,7 @@ export default function BookingCalendar({ vehicles, bookings, onUpdateBookings, 
                 {b.travelInfo && (
                   <div>
                     <p className="text-zinc-600 uppercase tracking-widest text-[10px]">Reiseinfos</p>
-                    <p className="text-zinc-300 text-xs">{b.travelInfo}</p>
+                    <p className="text-zinc-300 text-xs break-words whitespace-pre-wrap overflow-y-auto max-h-32">{b.travelInfo}</p>
                   </div>
                 )}
               </div>
