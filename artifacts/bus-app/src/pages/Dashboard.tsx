@@ -98,8 +98,7 @@ export default function Dashboard({
 
   const partnerTabs: { id: Tab; label: string }[] = [
     { id: "dashboard", label: "Dashboard" },
-    { id: "fleet", label: "Flotte" },
-    { id: "bookings", label: "Ausbuchungen" },
+    { id: "bookings", label: "Buchungsübersicht" },
     { id: "calendar", label: "Kalender" },
     { id: "chat", label: "💬 Chat" },
   ];
@@ -189,7 +188,7 @@ export default function Dashboard({
           </div>
         )}
 
-        {activeTab === "dashboard" && (
+        {activeTab === "dashboard" && isMaster && (
           <div className="p-6 space-y-6">
             <StatsBar vehicles={vehicles} bookings={bookings} isMaster={isMaster} />
             <div className="grid lg:grid-cols-3 gap-6">
@@ -197,7 +196,6 @@ export default function Dashboard({
                 <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={isMaster} onUpdateVehicle={updateVehicle} />
               </div>
               <div className="space-y-4">
-                {/* Vehicle location selector for fuel */}
                 <div className="gold-border rounded-xl p-4">
                   <p className="text-xs text-zinc-500 uppercase tracking-widest mb-2">Tankpreise für</p>
                   <select
@@ -221,6 +219,14 @@ export default function Dashboard({
           </div>
         )}
 
+        {activeTab === "dashboard" && !isMaster && (
+          <div className="p-6 space-y-6">
+            <StatsBar vehicles={vehicles} bookings={bookings} isMaster={isMaster} />
+            <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={false} onUpdateVehicle={updateVehicle} expanded />
+            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={false} onUpdate={onBookingsChange} title="Buchungsübersicht" currentPartnerId={session.partnerId} />
+          </div>
+        )}
+
         {activeTab === "fleet" && (
           <div className="p-6">
             <FleetOverview vehicles={vehicles} bookings={bookings} isMaster={isMaster} onUpdateVehicle={updateVehicle} expanded />
@@ -229,7 +235,7 @@ export default function Dashboard({
 
         {activeTab === "bookings" && (
           <div className="p-6">
-            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} title="Alle Ausbuchungen" currentPartnerId={session.partnerId} />
+            <BookingTable bookings={bookings} vehicles={vehicles} isMaster={isMaster} onUpdate={onBookingsChange} title={isMaster ? "Alle Buchungen" : "Buchungsübersicht"} currentPartnerId={session.partnerId} />
           </div>
         )}
 
