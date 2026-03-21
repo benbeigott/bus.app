@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const API_BASE = "/api/store";
-const POLL_MS  = 20_000;
+const POLL_MS  = 12_000; // sync every 12 seconds
 
 /* ─── API helpers ─────────────────────────────────────────────────────── */
 async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: false }> {
   try {
-    const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}&t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
+    });
     if (!res.ok) return { ok: false };
     const data = await res.json() as T;
     return { ok: true, data };
@@ -16,16 +19,19 @@ async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: fal
 }
 
 async function apiSet(key: string, value: unknown): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value }),
-    });
-    return res.ok;
-  } catch {
-    return false;
+  // Retry up to 4 times so a single network hiccup doesn't lose data
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}?key=${encodeURIComponent(key)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value }),
+      });
+      if (res.ok) return true;
+    } catch { /* retry */ }
+    if (attempt < 4) await new Promise(r => setTimeout(r, 500 * attempt));
   }
+  return false;
 }
 
 /* ─── localStorage helpers ────────────────────────────────────────────── */
@@ -49,47 +55,27 @@ export function useStore<T>(
   initial: T
 ): [T, (val: T | ((prev: T) => T)) => void, boolean] {
 
+  // Start with localStorage so the UI isn't blank on first paint
   const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
   const [loaded, setLoaded] = useState(false);
-  const mounted   = useRef(true);
-  // Track if user has written AFTER mount — prevents stale API data from overwriting fresh user input
-  const userWrote = useRef(false);
+  const mounted     = useRef(true);
+  // Timestamp of last user write — poll won't overwrite within 15s of a write
+  const lastWriteTs = useRef<number>(0);
 
-  /* Load from API on mount */
+  /* ── Initial load: server is the single source of truth ── */
   useEffect(() => {
     mounted.current = true;
-    userWrote.current = false;
 
     apiGet<T>(key).then(result => {
       if (!mounted.current) return;
 
       if (result.ok) {
-        const remote = result.data;
-
-        if (!isEmpty(remote)) {
-          // DB has real data
-          if (!userWrote.current) {
-            // No user writes yet → safe to trust DB
-            setData(remote);
-            lsWrite(key, remote);
-          } else {
-            // User already wrote something since mount → do NOT overwrite.
-            // Re-push user's version to DB to ensure consistency.
-            setData(prev => {
-              apiSet(key, prev);
-              return prev;
-            });
-          }
-        } else {
-          // DB is empty → push local data up to DB
-          if (!userWrote.current) {
-            const local = lsRead<T>(key);
-            if (!isEmpty(local)) {
-              apiSet(key, local);
-              setData(local as T);
-            }
-          }
+        if (!isEmpty(result.data)) {
+          // Server has data → use it, overwrite local cache
+          setData(result.data);
+          lsWrite(key, result.data);
         }
+        // If server is empty (no key yet), keep local state — don't push local to server here
       }
       setLoaded(true);
     });
@@ -98,36 +84,48 @@ export function useStore<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  /* Poll: sync from other devices — NEVER wipe existing data */
+  /* ── Poll: sync changes from other devices ── */
   useEffect(() => {
     if (!loaded) return;
+
     const timer = setInterval(async () => {
       if (!mounted.current) return;
+
+      // Skip poll if user wrote recently to avoid overwriting fresh local data
+      if (Date.now() - lastWriteTs.current < 15_000) return;
+
       const result = await apiGet<T>(key);
       if (!mounted.current || !result.ok) return;
+
       const remote = result.data;
 
+      // NEVER overwrite local data with an empty server response
+      if (isEmpty(remote)) return;
+
       setData(prev => {
-        // Safety: if remote is empty but we have local data → keep local, re-push to DB
-        if (isEmpty(remote) && !isEmpty(prev)) {
-          apiSet(key, prev);
-          return prev;
-        }
+        // If data is the same, no update needed
         if (JSON.stringify(prev) === JSON.stringify(remote)) return prev;
         lsWrite(key, remote);
         return remote;
       });
     }, POLL_MS);
+
     return () => clearInterval(timer);
   }, [key, loaded]);
 
-  /* Write: update state + localStorage + DB */
+  /* ── Write: update state + localStorage + DB atomically ── */
   const setState = useCallback((val: T | ((prev: T) => T)) => {
-    userWrote.current = true;
+    lastWriteTs.current = Date.now();
     setData(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
       lsWrite(key, next);
-      apiSet(key, next);
+      // Fire and forget — apiSet already has retry logic built in
+      apiSet(key, next).then(ok => {
+        if (!ok) {
+          // If all retries failed, try one final time after 2s
+          setTimeout(() => apiSet(key, next), 2000);
+        }
+      });
       return next;
     });
   }, [key]);
