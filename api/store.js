@@ -30,7 +30,33 @@ function kvRequest(method, path, body) {
   });
 }
 
+async function kvGet(kvKey) {
+  const r = await kvRequest("GET", "/" + encodeURIComponent(kvKey), null);
+  return r;
+}
+
+async function kvSet(kvKey, encoded) {
+  // Retry up to 3 times on failure
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const r = await kvRequest("POST", "", encoded);
+      if (r.status === 200) return r;
+      if (attempt < 3) await new Promise(res => setTimeout(res, 300 * attempt));
+    } catch (e) {
+      if (attempt === 3) throw e;
+      await new Promise(res => setTimeout(res, 300 * attempt));
+    }
+  }
+}
+
 module.exports = async function handler(req, res) {
+  // CRITICAL: Disable ALL caching so every device gets fresh data
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+  res.setHeader("Surrogate-Control", "no-store");
+  res.setHeader("CDN-Cache-Control", "no-store");
+  res.setHeader("Vercel-CDN-Cache-Control", "no-store");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -42,11 +68,10 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const r = await kvRequest("GET", "/" + encodeURIComponent(kvKey), null);
+      const r = await kvGet(kvKey);
 
-      // KV auth/server error → tell client to keep whatever it has
       if (r.status !== 200 && r.status !== 404) {
-        console.error("KV GET error status:", r.status, r.body.slice(0, 100));
+        console.error("KV GET error status:", r.status, r.body.slice(0, 200));
         return res.status(503).json({ error: "KV unavailable", status: r.status });
       }
 
@@ -65,14 +90,18 @@ module.exports = async function handler(req, res) {
       const value = req.body && req.body.value;
       if (value === undefined) return res.status(400).json({ error: "value required" });
       const encoded = encodeURIComponent(kvKey) + "=" + encodeURIComponent(JSON.stringify(value));
-      const r = await kvRequest("POST", "", encoded);
-
-      if (r.status !== 200) {
-        console.error("KV POST error status:", r.status, r.body.slice(0, 100));
-        return res.status(503).json({ error: "KV write failed", status: r.status });
+      
+      try {
+        const r = await kvSet(kvKey, encoded);
+        if (!r || r.status !== 200) {
+          console.error("KV POST failed after retries:", r && r.status, r && r.body.slice(0, 200));
+          return res.status(503).json({ error: "KV write failed after retries", status: r && r.status });
+        }
+        return res.json({ ok: true });
+      } catch (writeErr) {
+        console.error("KV write exception:", writeErr && writeErr.message);
+        return res.status(503).json({ error: "KV write exception: " + (writeErr && writeErr.message) });
       }
-
-      return res.json({ ok: true });
     }
 
     return res.status(405).json({ error: "Method not allowed" });
