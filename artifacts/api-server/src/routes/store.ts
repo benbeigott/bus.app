@@ -1,74 +1,72 @@
 import { Router } from "express";
-import https from "https";
-import http from "http";
+import { Pool } from "pg";
 
 const router = Router();
 
-const DB_URL = process.env.REPLIT_DB_URL || "";
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes("sslmode=disable") ? false : { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+});
 
-function kvRequest(method: string, path: string, body?: string): Promise<{ status: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    if (!DB_URL) return reject(new Error("REPLIT_DB_URL not set"));
-    const url = new URL(DB_URL + path);
-    const mod = url.protocol === "https:" ? https : http;
-    const opts: any = {
-      hostname: url.hostname,
-      port: url.port || (url.protocol === "https:" ? 443 : 80),
-      path: url.pathname + url.search,
-      method,
-      headers: {} as Record<string, string | number>,
-    };
-    if (body) {
-      opts.headers["Content-Type"] = "application/x-www-form-urlencoded";
-      opts.headers["Content-Length"] = Buffer.byteLength(body);
-    }
-    const req = mod.request(opts, (res: any) => {
-      let data = "";
-      res.on("data", (c: any) => (data += c));
-      res.on("end", () => resolve({ status: res.statusCode || 200, body: data }));
-    });
-    req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
-  });
-}
+// Ensure table exists on startup
+pool.query(`
+  CREATE TABLE IF NOT EXISTS store_data (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )
+`).catch(err => console.error("store_data table init error:", err.message));
 
 router.get("/store", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+
   const key = req.query.key as string;
   if (!key) return res.status(400).json({ error: "key required" });
-  const kvKey = "bd_" + key;
+
   try {
-    const r = await kvRequest("GET", "/" + encodeURIComponent(kvKey));
-    if (r.status !== 200 && r.status !== 404) {
-      console.error("KV GET error status:", r.status, r.body.slice?.(0, 100));
-      return res.status(503).json({ error: "KV unavailable", status: r.status });
-    }
-    if (r.status === 404 || r.body === "") {
+    const result = await pool.query(
+      "SELECT value FROM store_data WHERE key = $1",
+      [key]
+    );
+
+    if (result.rows.length === 0) {
       return res.json(key === "depot" ? null : []);
     }
-    try { return res.json(JSON.parse(r.body)); }
-    catch { return res.json(r.body); }
+
+    try {
+      return res.json(JSON.parse(result.rows[0].value));
+    } catch {
+      return res.json(result.rows[0].value);
+    }
   } catch (err: any) {
-    return res.status(500).json({ error: err?.message });
+    console.error("DB GET error:", err?.message);
+    return res.status(503).json({ error: "DB unavailable: " + err?.message });
   }
 });
 
 router.post("/store", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+
   const key = req.query.key as string;
   if (!key) return res.status(400).json({ error: "key required" });
+
   const value = req.body?.value;
   if (value === undefined) return res.status(400).json({ error: "value required" });
-  const kvKey = "bd_" + key;
+
   try {
-    const encoded = encodeURIComponent(kvKey) + "=" + encodeURIComponent(JSON.stringify(value));
-    const r = await kvRequest("POST", "", encoded);
-    if (r.status !== 200) {
-      console.error("KV POST error status:", r.status, r.body?.slice?.(0, 100));
-      return res.status(503).json({ error: "KV write failed", status: r.status });
-    }
+    await pool.query(
+      `INSERT INTO store_data (key, value, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+      [key, JSON.stringify(value)]
+    );
     return res.json({ ok: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err?.message });
+    console.error("DB POST error:", err?.message);
+    return res.status(503).json({ error: "DB write failed: " + err?.message });
   }
 });
 
