@@ -6,6 +6,7 @@ interface Props {
   bookings: Booking[];
   onUpdateVehicle: (v: Vehicle) => void;
   onUpdateBookings: (b: Booking[]) => void;
+  isMaster?: boolean;
 }
 
 const TYPE_ICON: Record<string, string> = {
@@ -69,7 +70,7 @@ function getSpan(b: Booking, days: { date: string }[]): { startIdx: number; span
   return { startIdx, span: Math.max(1, span) };
 }
 
-export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, onUpdateBookings }: Props) {
+export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, onUpdateBookings, isMaster = true }: Props) {
   const days = useMemo(() => buildDays(28), []);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<string | null>(null);
@@ -112,7 +113,7 @@ export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, o
       {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
         <div>
-          <p className="text-xs text-zinc-500 uppercase tracking-widest">Master Control</p>
+          <p className="text-xs text-zinc-500 uppercase tracking-widest">{isMaster ? "Master Control" : "Gesamtübersicht"}</p>
           <h1 className="text-2xl font-bold text-white mt-1">Dispatch Planner</h1>
           <p className="text-xs text-zinc-600 mt-1">28-Tage-Vorschau · Klick auf Buchung für Details</p>
         </div>
@@ -177,7 +178,7 @@ export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, o
             {vehicles.map((vehicle, vIdx) => {
               const cfg = STATUS_CONFIG[vehicle.status];
               const isBlocked = vehicle.status === "blocked";
-              const canBlock = vehicle.status !== "repair";
+              const canBlock = isMaster && vehicle.status !== "repair";
               const vehicleBookings = bookings.filter(
                 b => b.vehicleId === vehicle.id && b.status !== "cancelled"
               );
@@ -326,7 +327,7 @@ export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, o
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {v.status !== "repair" && (
+                {isMaster && v.status !== "repair" && (
                   <button
                     onClick={() => setConfirmBlock(v.id)}
                     className={`text-xs px-4 py-2 rounded-lg border font-semibold transition-all ${
@@ -550,15 +551,17 @@ export default function DispatchPlanner({ vehicles, bookings, onUpdateVehicle, o
               <div className="px-6 py-4 border-t border-white/[0.05] flex items-center gap-3">
                 {!editMode ? (
                   <>
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-lg text-sm transition-all"
-                    >
-                      ✏️ Buchung bearbeiten
-                    </button>
+                    {isMaster && (
+                      <button
+                        onClick={() => setEditMode(true)}
+                        className="flex-1 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-lg text-sm transition-all"
+                      >
+                        ✏️ Buchung bearbeiten
+                      </button>
+                    )}
                     <button
                       onClick={() => { setSelectedBooking(null); setEditMode(false); }}
-                      className="px-4 py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all"
+                      className={`py-2.5 border border-white/10 text-zinc-400 rounded-lg text-sm hover:border-white/20 transition-all ${isMaster ? "px-4" : "flex-1"}`}
                     >
                       Schließen
                     </button>
