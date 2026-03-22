@@ -98,6 +98,7 @@ export default function Dashboard({
 
   const partnerTabs: { id: Tab; label: string }[] = [
     { id: "dashboard", label: "Dashboard" },
+    { id: "planung", label: "Gesamtplanung" },
     { id: "bookings", label: "Buchungsübersicht" },
     { id: "calendar", label: "Kalender" },
     { id: "chat", label: "💬 Chat" },
@@ -182,9 +183,9 @@ export default function Dashboard({
       </div>
 
       <div className="flex-1 overflow-auto">
-        {activeTab === "planung" && isMaster && (
+        {activeTab === "planung" && (
           <div className="p-6">
-            <DispatchPlanner vehicles={vehicles} bookings={bookings} onUpdateVehicle={updateVehicle} onUpdateBookings={onBookingsChange} />
+            <DispatchPlanner vehicles={vehicles} bookings={bookings} onUpdateVehicle={updateVehicle} onUpdateBookings={onBookingsChange} isMaster={isMaster} />
           </div>
         )}
 
