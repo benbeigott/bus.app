@@ -70,10 +70,26 @@ export function useStore<T>(
       if (!mounted.current) return;
 
       if (result.ok) {
-        if (!isEmpty(result.data)) {
-          // Server has data → use it, overwrite local cache
-          setData(result.data);
-          lsWrite(key, result.data);
+        const serverData = result.data;
+        const localData = lsRead<T>(key);
+
+        if (!isEmpty(serverData)) {
+          // If local cache is an array with MORE entries than server,
+          // the server likely missed some saves (e.g. large payload failed) → restore from local.
+          if (
+            Array.isArray(serverData) &&
+            Array.isArray(localData) &&
+            localData.length > (serverData as unknown[]).length
+          ) {
+            // Local has more entries → push local to server and keep local state
+            apiSet(key, localData);
+            lsWrite(key, localData);
+            // setData not needed — state already initialized from lsRead
+          } else {
+            // Server has more or equal entries → server wins
+            setData(serverData);
+            lsWrite(key, serverData);
+          }
         }
         // If server is empty (no key yet), keep local state — don't push local to server here
       }
