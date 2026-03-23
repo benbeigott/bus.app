@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const API_BASE = "/api/store";
-const POLL_MS  = 5_000;  // sync every 5 seconds — all browsers always up to date
+const API_BASE     = "/api/store";
+const POLL_MS      = 5_000;   // check server every 5s
+const WRITE_HOLD   = 30_000;  // after any write, pause polling for 30s (images can be large)
 
 /* ─── API helpers ─────────────────────────────────────────────────────── */
 async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: false }> {
@@ -32,7 +33,7 @@ async function apiSet(key: string, value: unknown): Promise<boolean> {
   return false;
 }
 
-/* ─── localStorage helpers (instant-paint cache only) ─────────────────── */
+/* ─── localStorage helpers ─────────────────────────────────────────────── */
 function lsRead<T>(key: string): T | null {
   try {
     const s = localStorage.getItem(`bd_${key}`);
@@ -55,26 +56,27 @@ export function useStore<T>(
 
   const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
   const [loaded, setLoaded] = useState(false);
-  const mounted    = useRef(true);
-  // After a write, hold off polling for 5s so the write isn't immediately overwritten
-  const lastWriteTs = useRef<number>(0);
+  const mounted         = useRef(true);
+  const lastWriteTs     = useRef<number>(0);
+  const pendingWrites   = useRef<number>(0); // block poll while upload is in flight
 
-  /* ── Apply server data ─────────────────────────────────────────────── */
+  /* ── Apply server data (only if no writes are pending or recent) ──── */
   function applyServer(serverData: T) {
     const localData = lsRead<T>(key);
 
-    // One-time recovery: if localStorage has MORE array entries than server,
-    // the server missed some saves (large payload issue) — push local to server.
-    if (
-      Array.isArray(serverData) &&
-      Array.isArray(localData) &&
-      (localData as unknown[]).length > (serverData as unknown[]).length
-    ) {
+    // If local has MORE bytes than server (e.g. photo uploaded but server hasn't saved yet),
+    // push local to server instead of overwriting local with stale server data.
+    const localBytes  = JSON.stringify(localData  ?? []).length;
+    const serverBytes = JSON.stringify(serverData      ).length;
+
+    if (localData !== null && localBytes > serverBytes * 1.05) {
+      // Local is at least 5% larger → server missed data, push local up
       apiSet(key, localData);
       lsWrite(key, localData);
-      return; // keep current state (already initialized from localStorage)
+      return; // keep current local state
     }
 
+    // Server has the definitive version
     setData(prev => {
       if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
       lsWrite(key, serverData);
@@ -96,13 +98,16 @@ export function useStore<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  /* ── Poll every 5 seconds — keeps all browsers in sync ─────────────── */
+  /* ── Poll every 5s — blocked during/after writes ───────────────────── */
   useEffect(() => {
     if (!loaded) return;
 
     const timer = setInterval(async () => {
       if (!mounted.current) return;
-      if (Date.now() - lastWriteTs.current < 5_000) return;
+      // Don't poll if a write is in flight
+      if (pendingWrites.current > 0) return;
+      // Don't poll for 30s after last write (large payloads need time)
+      if (Date.now() - lastWriteTs.current < WRITE_HOLD) return;
 
       const result = await apiGet<T>(key);
       if (!mounted.current || !result.ok) return;
@@ -113,15 +118,27 @@ export function useStore<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, loaded]);
 
-  /* ── Write: state + localStorage + server (always) ─────────────────── */
+  /* ── Write: update state + localStorage + server ───────────────────── */
   const setState = useCallback((val: T | ((prev: T) => T)) => {
     lastWriteTs.current = Date.now();
     setData(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
       lsWrite(key, next);
+
+      pendingWrites.current++;
       apiSet(key, next).then(ok => {
-        if (!ok) setTimeout(() => apiSet(key, next), 2_000);
+        pendingWrites.current = Math.max(0, pendingWrites.current - 1);
+        if (!ok) {
+          // One extra retry after 3s if all 4 attempts failed
+          pendingWrites.current++;
+          setTimeout(() => {
+            apiSet(key, next).finally(() => {
+              pendingWrites.current = Math.max(0, pendingWrites.current - 1);
+            });
+          }, 3_000);
+        }
       });
+
       return next;
     });
   }, [key]);
