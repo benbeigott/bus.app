@@ -50,3 +50,11 @@ module.exports = async function handler(req, res) {
     return res.status(502).json({ error: "Proxy error: " + (err?.message || "unknown") });
   }
 };
+
+module.exports.config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "50mb",
+    },
+  },
+};
