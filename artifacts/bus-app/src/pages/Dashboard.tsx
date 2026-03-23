@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type UserSession, type Partner } from "@/App";
 import { useLiveClock } from "@/hooks/useLiveClock";
 import { useFuelPrices } from "@/hooks/useFuelPrices";
-import { useState } from "react";
+import { useStore } from "@/hooks/useStore";
 import FleetOverview from "@/components/FleetOverview";
 import BookingCalendar from "@/components/BookingCalendar";
 import BookingTable from "@/components/BookingTable";
@@ -54,6 +54,21 @@ export default function Dashboard({
   const { prices, stations, fuelTip, lastUpdate, stationName, isLive } = useFuelPrices(fuelDepot);
 
   const isMaster = session.role === "master";
+  const myId = isMaster ? "master" : (session.partnerId || session.name);
+
+  // Chat unread notification
+  const [messages] = useStore<{ id: string; from: string; to: string | null; timestamp: number }[]>("messages", []);
+  const lastSeenChatTs = useRef<number>(activeTab === "chat" ? Date.now() : 0);
+  const hasUnreadChat = activeTab !== "chat" && messages.some(m =>
+    m.timestamp > lastSeenChatTs.current &&
+    m.from !== myId &&
+    (m.to === null || m.to === myId)
+  );
+
+  function handleTabChange(id: Tab) {
+    if (id === "chat") lastSeenChatTs.current = Date.now();
+    setActiveTab(id);
+  }
 
   // Auto-update vehicle location based on booking schedule
   useEffect(() => {
@@ -131,8 +146,8 @@ export default function Dashboard({
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+                onClick={() => handleTabChange(tab.id)}
+                className={`relative px-4 py-2 text-xs font-medium rounded-lg transition-all ${
                   activeTab === tab.id
                     ? "text-yellow-500 bg-yellow-500/10 border border-yellow-500/20"
                     : tab.id === "verwaltung"
@@ -141,6 +156,9 @@ export default function Dashboard({
                 }`}
               >
                 {tab.label}
+                {tab.id === "chat" && hasUnreadChat && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_6px_rgba(234,179,8,0.8)]" />
+                )}
               </button>
             ))}
           </div>
@@ -172,12 +190,15 @@ export default function Dashboard({
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all ${
+            onClick={() => handleTabChange(tab.id)}
+            className={`relative flex-shrink-0 px-5 py-3 text-xs font-medium border-b-2 transition-all ${
               activeTab === tab.id ? "text-yellow-500 border-yellow-500" : "text-zinc-500 border-transparent"
             }`}
           >
             {tab.label}
+            {tab.id === "chat" && hasUnreadChat && (
+              <span className="absolute top-2 right-1.5 w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_6px_rgba(234,179,8,0.8)]" />
+            )}
           </button>
         ))}
       </div>
