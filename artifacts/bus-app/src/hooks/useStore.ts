@@ -60,7 +60,7 @@ export function useStore<T>(
   const lastWriteTs     = useRef<number>(0);
   const pendingWrites   = useRef<number>(0); // block poll while upload is in flight
 
-  /* ── Apply server data — server is ALWAYS the truth ───────────────── */
+  /* ── Apply server data — server wins (used by polls) ──────────────── */
   function applyServer(serverData: T) {
     setData(prev => {
       if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
@@ -75,7 +75,33 @@ export function useStore<T>(
 
     apiGet<T>(key).then(result => {
       if (!mounted.current) return;
-      if (result.ok && !isEmpty(result.data)) applyServer(result.data);
+
+      if (result.ok && !isEmpty(result.data)) {
+        const serverData = result.data;
+        const localData  = lsRead<T>(key);
+
+        // Startup-only recovery: if the browser has MORE array items than the server,
+        // the extra items likely failed to save (old body-limit bug, network hiccup, etc.)
+        // → push local to server so nothing is lost.
+        //
+        // We compare ITEM COUNT (not bytes), so vehicle photos never cause false positives.
+        //
+        // Polls never apply this logic — they always trust the server.
+        // This fires exactly once per page load, before any poll starts.
+        const localCount  = Array.isArray(localData)  ? (localData  as unknown[]).length : -1;
+        const serverCount = Array.isArray(serverData) ? (serverData as unknown[]).length : -1;
+
+        if (localCount > serverCount) {
+          // Local has more items → push to server, keep local state
+          apiSet(key, localData);
+          lsWrite(key, localData);
+          // setState not needed — already initialized from lsRead in useState
+        } else {
+          // Server has same or more items → server wins
+          applyServer(serverData);
+        }
+      }
+
       setLoaded(true);
     });
 
@@ -83,15 +109,13 @@ export function useStore<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  /* ── Poll every 5s — blocked during/after writes ───────────────────── */
+  /* ── Poll every 5s — server always wins, blocked during/after writes ── */
   useEffect(() => {
     if (!loaded) return;
 
     const timer = setInterval(async () => {
       if (!mounted.current) return;
-      // Don't poll if a write is in flight
       if (pendingWrites.current > 0) return;
-      // Don't poll for 30s after last write (large payloads need time)
       if (Date.now() - lastWriteTs.current < WRITE_HOLD) return;
 
       const result = await apiGet<T>(key);
@@ -114,7 +138,6 @@ export function useStore<T>(
       apiSet(key, next).then(ok => {
         pendingWrites.current = Math.max(0, pendingWrites.current - 1);
         if (!ok) {
-          // One extra retry after 3s if all 4 attempts failed
           pendingWrites.current++;
           setTimeout(() => {
             apiSet(key, next).finally(() => {
