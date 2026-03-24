@@ -60,20 +60,22 @@ export function useStore<T>(
   const lastWriteTs     = useRef<number>(0);
   const pendingWrites   = useRef<number>(0); // block poll while upload is in flight
 
-  /* ── Apply server data (only if no writes are pending or recent) ──── */
+  /* ── Apply server data ─────────────────────────────────────────────── */
   function applyServer(serverData: T) {
     const localData = lsRead<T>(key);
 
-    // If local has MORE bytes than server (e.g. photo uploaded but server hasn't saved yet),
-    // push local to server instead of overwriting local with stale server data.
+    // One-time recovery: if local has at least 100 KB MORE data than server,
+    // this almost certainly means a vehicle photo upload failed (photos are 500KB–3MB).
+    // Partners, drivers, bookings are each <5KB so they never trigger this path —
+    // those data types always trust the server (preserving intentional master deletes).
+    const LOCAL_WINS_THRESHOLD = 100_000; // 100 KB
     const localBytes  = JSON.stringify(localData  ?? []).length;
     const serverBytes = JSON.stringify(serverData      ).length;
 
-    if (localData !== null && localBytes > serverBytes * 1.05) {
-      // Local is at least 5% larger → server missed data, push local up
+    if (localData !== null && (localBytes - serverBytes) > LOCAL_WINS_THRESHOLD) {
       apiSet(key, localData);
       lsWrite(key, localData);
-      return; // keep current local state
+      return;
     }
 
     // Server has the definitive version
