@@ -60,25 +60,8 @@ export function useStore<T>(
   const lastWriteTs     = useRef<number>(0);
   const pendingWrites   = useRef<number>(0); // block poll while upload is in flight
 
-  /* ── Apply server data ─────────────────────────────────────────────── */
+  /* ── Apply server data — server is ALWAYS the truth ───────────────── */
   function applyServer(serverData: T) {
-    const localData = lsRead<T>(key);
-
-    // One-time recovery: if local has at least 100 KB MORE data than server,
-    // this almost certainly means a vehicle photo upload failed (photos are 500KB–3MB).
-    // Partners, drivers, bookings are each <5KB so they never trigger this path —
-    // those data types always trust the server (preserving intentional master deletes).
-    const LOCAL_WINS_THRESHOLD = 100_000; // 100 KB
-    const localBytes  = JSON.stringify(localData  ?? []).length;
-    const serverBytes = JSON.stringify(serverData      ).length;
-
-    if (localData !== null && (localBytes - serverBytes) > LOCAL_WINS_THRESHOLD) {
-      apiSet(key, localData);
-      lsWrite(key, localData);
-      return;
-    }
-
-    // Server has the definitive version
     setData(prev => {
       if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
       lsWrite(key, serverData);
