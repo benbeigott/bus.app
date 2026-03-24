@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const API_BASE     = "/api/store";
-const POLL_MS      = 5_000;   // check server every 5s
-const WRITE_HOLD   = 30_000;  // after any write, pause polling for 30s (images can be large)
+const API_BASE   = "/api/store";
+const POLL_MS    = 5_000;
+const WRITE_HOLD = 30_000; // pause poll for 30s after a write (large photo uploads)
 
 /* ─── API helpers ─────────────────────────────────────────────────────── */
 async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: false }> {
@@ -33,7 +33,7 @@ async function apiSet(key: string, value: unknown): Promise<boolean> {
   return false;
 }
 
-/* ─── localStorage helpers ─────────────────────────────────────────────── */
+/* ─── localStorage — only used for instant first paint, never overrides DB ── */
 function lsRead<T>(key: string): T | null {
   try {
     const s = localStorage.getItem(`bd_${key}`);
@@ -54,54 +54,28 @@ export function useStore<T>(
   initial: T
 ): [T, (val: T | ((prev: T) => T)) => void, boolean] {
 
+  // localStorage gives instant first paint — immediately replaced by DB data
   const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
   const [loaded, setLoaded] = useState(false);
-  const mounted         = useRef(true);
-  const lastWriteTs     = useRef<number>(0);
-  const pendingWrites   = useRef<number>(0); // block poll while upload is in flight
+  const mounted       = useRef(true);
+  const lastWriteTs   = useRef<number>(0);
+  const pendingWrites = useRef<number>(0);
 
-  /* ── Apply server data — server wins (used by polls) ──────────────── */
-  function applyServer(serverData: T) {
+  function fromDB(serverData: T) {
     setData(prev => {
       if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
-      lsWrite(key, serverData);
+      lsWrite(key, serverData); // keep cache in sync with DB
       return serverData;
     });
   }
 
-  /* ── Initial load ──────────────────────────────────────────────────── */
+  /* ── On load: fetch from DB immediately ───────────────────────────── */
   useEffect(() => {
     mounted.current = true;
 
     apiGet<T>(key).then(result => {
       if (!mounted.current) return;
-
-      if (result.ok && !isEmpty(result.data)) {
-        const serverData = result.data;
-        const localData  = lsRead<T>(key);
-
-        // Startup-only recovery: if the browser has MORE array items than the server,
-        // the extra items likely failed to save (old body-limit bug, network hiccup, etc.)
-        // → push local to server so nothing is lost.
-        //
-        // We compare ITEM COUNT (not bytes), so vehicle photos never cause false positives.
-        //
-        // Polls never apply this logic — they always trust the server.
-        // This fires exactly once per page load, before any poll starts.
-        const localCount  = Array.isArray(localData)  ? (localData  as unknown[]).length : -1;
-        const serverCount = Array.isArray(serverData) ? (serverData as unknown[]).length : -1;
-
-        if (localCount > serverCount) {
-          // Local has more items → push to server, keep local state
-          apiSet(key, localData);
-          lsWrite(key, localData);
-          // setState not needed — already initialized from lsRead in useState
-        } else {
-          // Server has same or more items → server wins
-          applyServer(serverData);
-        }
-      }
-
+      if (result.ok && !isEmpty(result.data)) fromDB(result.data);
       setLoaded(true);
     });
 
@@ -109,25 +83,25 @@ export function useStore<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  /* ── Poll every 5s — server always wins, blocked during/after writes ── */
+  /* ── Poll every 5s: always fetch fresh from DB ─────────────────────── */
   useEffect(() => {
     if (!loaded) return;
 
     const timer = setInterval(async () => {
       if (!mounted.current) return;
-      if (pendingWrites.current > 0) return;
-      if (Date.now() - lastWriteTs.current < WRITE_HOLD) return;
+      if (pendingWrites.current > 0) return;             // upload in progress
+      if (Date.now() - lastWriteTs.current < WRITE_HOLD) return; // recent write
 
       const result = await apiGet<T>(key);
       if (!mounted.current || !result.ok) return;
-      if (!isEmpty(result.data)) applyServer(result.data);
+      if (!isEmpty(result.data)) fromDB(result.data);
     }, POLL_MS);
 
     return () => clearInterval(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, loaded]);
 
-  /* ── Write: update state + localStorage + server ───────────────────── */
+  /* ── Write: save to DB immediately ────────────────────────────────── */
   const setState = useCallback((val: T | ((prev: T) => T)) => {
     lastWriteTs.current = Date.now();
     setData(prev => {
