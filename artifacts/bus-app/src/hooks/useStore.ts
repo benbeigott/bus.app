@@ -2,7 +2,23 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const API_BASE   = "/api/store";
 const POLL_MS    = 5_000;
-const WRITE_HOLD = 30_000; // pause poll for 30s after a write (large photo uploads)
+const WRITE_HOLD = 30_000;
+
+// Increment this whenever stale browser caches need to be wiped.
+// On first load with a new version, ALL old bd_* localStorage keys are cleared.
+const CACHE_VERSION = "v4";
+
+/* ─── One-time cache wipe at module load ──────────────────────────────── */
+(function wipeStaleCache() {
+  try {
+    if (localStorage.getItem("bd_version") !== CACHE_VERSION) {
+      for (const k of Object.keys(localStorage)) {
+        if (k.startsWith("bd_")) localStorage.removeItem(k);
+      }
+      localStorage.setItem("bd_version", CACHE_VERSION);
+    }
+  } catch { /* private/incognito — ignore */ }
+})();
 
 /* ─── API helpers ─────────────────────────────────────────────────────── */
 async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: false }> {
@@ -33,7 +49,7 @@ async function apiSet(key: string, value: unknown): Promise<boolean> {
   return false;
 }
 
-/* ─── localStorage — only used for instant first paint, never overrides DB ── */
+/* ─── localStorage — only for instant first paint, always overwritten by DB ── */
 function lsRead<T>(key: string): T | null {
   try {
     const s = localStorage.getItem(`bd_${key}`);
@@ -54,22 +70,22 @@ export function useStore<T>(
   initial: T
 ): [T, (val: T | ((prev: T) => T)) => void, boolean] {
 
-  // localStorage gives instant first paint — immediately replaced by DB data
   const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
   const [loaded, setLoaded] = useState(false);
   const mounted       = useRef(true);
   const lastWriteTs   = useRef<number>(0);
   const pendingWrites = useRef<number>(0);
 
+  /* Database is always the truth */
   function fromDB(serverData: T) {
     setData(prev => {
       if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
-      lsWrite(key, serverData); // keep cache in sync with DB
+      lsWrite(key, serverData);
       return serverData;
     });
   }
 
-  /* ── On load: fetch from DB immediately ───────────────────────────── */
+  /* ── Load from DB on startup ───────────────────────────────────────── */
   useEffect(() => {
     mounted.current = true;
 
@@ -83,14 +99,14 @@ export function useStore<T>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  /* ── Poll every 5s: always fetch fresh from DB ─────────────────────── */
+  /* ── Poll every 5s — DB always wins ───────────────────────────────── */
   useEffect(() => {
     if (!loaded) return;
 
     const timer = setInterval(async () => {
       if (!mounted.current) return;
-      if (pendingWrites.current > 0) return;             // upload in progress
-      if (Date.now() - lastWriteTs.current < WRITE_HOLD) return; // recent write
+      if (pendingWrites.current > 0) return;
+      if (Date.now() - lastWriteTs.current < WRITE_HOLD) return;
 
       const result = await apiGet<T>(key);
       if (!mounted.current || !result.ok) return;
