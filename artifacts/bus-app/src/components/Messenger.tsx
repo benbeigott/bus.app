@@ -60,6 +60,11 @@ export default function Messenger({ session, partners }: Props) {
     return messages.filter(m => m.to === myId && m.from === convId).length;
   }
 
+  function deleteAllMessages() {
+    if (!window.confirm("Alle Nachrichten für alle Benutzer dauerhaft löschen?")) return;
+    setMessages([]);
+  }
+
   function send(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
@@ -153,7 +158,7 @@ export default function Messenger({ session, partners }: Props) {
           <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-sm flex-shrink-0">
             {activeConv === "group" ? "🚌" : (otherUser?.name.slice(0, 2).toUpperCase() || "?")}
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-white">
               {activeConv === "group" ? "Gruppen-Chat" : otherUser?.name}
             </p>
@@ -161,6 +166,15 @@ export default function Messenger({ session, partners }: Props) {
               {activeConv === "group" ? `${allUsers.length} Teilnehmer` : "Privat"}
             </p>
           </div>
+          {session.role === "master" && (
+            <button
+              onClick={deleteAllMessages}
+              title="Alle Nachrichten löschen"
+              className="px-3 py-1.5 text-[10px] font-semibold text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 hover:border-red-500/60 transition-all uppercase tracking-wider"
+            >
+              Alle löschen
+            </button>
+          )}
         </div>
 
         {/* Messages */}
