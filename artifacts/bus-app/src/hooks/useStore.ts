@@ -6,7 +6,7 @@ const WRITE_HOLD = 30_000;
 
 // Increment this whenever stale browser caches need to be wiped.
 // On first load with a new version, ALL old bd_* localStorage keys are cleared.
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 
 /* ─── One-time cache wipe at module load ──────────────────────────────── */
 (function wipeStaleCache() {
