@@ -120,20 +120,27 @@ export function useStore<T>(
   /* ── Write: save to DB immediately ────────────────────────────────── */
   const setState = useCallback((val: T | ((prev: T) => T)) => {
     lastWriteTs.current = Date.now();
+    // Increment BEFORE setData so the poll guard fires immediately (no race condition)
+    pendingWrites.current++;
+
     setData(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
       lsWrite(key, next);
 
-      pendingWrites.current++;
+      console.log(`[Store] Schreibe '${key}': ${JSON.stringify(next).length} Zeichen`);
+
       apiSet(key, next).then(ok => {
         pendingWrites.current = Math.max(0, pendingWrites.current - 1);
         if (!ok) {
+          console.warn(`[Store] Schreiben fehlgeschlagen für '${key}', retry in 3s`);
           pendingWrites.current++;
           setTimeout(() => {
             apiSet(key, next).finally(() => {
               pendingWrites.current = Math.max(0, pendingWrites.current - 1);
             });
           }, 3_000);
+        } else {
+          console.log(`[Store] '${key}' erfolgreich in DB gespeichert`);
         }
       });
 
