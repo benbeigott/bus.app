@@ -8,6 +8,8 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL?.includes("sslmode=disable") ? false : { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  statement_timeout: 60000,
 });
 
 // Ensure table exists on startup
@@ -42,7 +44,7 @@ router.get("/store", async (req, res) => {
       return res.json(result.rows[0].value);
     }
   } catch (err: any) {
-    console.error("DB GET error:", err?.message);
+    console.error(`[DB GET] Fehler für key='${key}':`, err?.message);
     return res.status(503).json({ error: "DB unavailable: " + err?.message });
   }
 });
@@ -56,16 +58,20 @@ router.post("/store", async (req, res) => {
   const value = req.body?.value;
   if (value === undefined) return res.status(400).json({ error: "value required" });
 
+  const serialized = JSON.stringify(value);
+  console.log(`[DB POST] key='${key}' | Größe: ${(serialized.length / 1024).toFixed(1)} KB (${serialized.length} Zeichen)`);
+
   try {
     await pool.query(
       `INSERT INTO store_data (key, value, updated_at)
        VALUES ($1, $2, NOW())
        ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-      [key, JSON.stringify(value)]
+      [key, serialized]
     );
+    console.log(`[DB POST] ✓ key='${key}' erfolgreich gespeichert`);
     return res.json({ ok: true });
   } catch (err: any) {
-    console.error("DB POST error:", err?.message);
+    console.error(`[DB POST] ✗ FEHLER für key='${key}':`, err?.message, err?.code);
     return res.status(503).json({ error: "DB write failed: " + err?.message });
   }
 });
