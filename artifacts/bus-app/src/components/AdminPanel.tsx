@@ -50,11 +50,33 @@ const emptyVehicle = {
 
 type Section = "partners" | "vehicles" | "drivers" | "depot";
 
-function readFileAsBase64(file: File): Promise<string> {
+const MAX_PX = 800;
+const IMG_QUALITY = 0.6;
+
+function compressImageToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > MAX_PX || height > MAX_PX) {
+          if (width >= height) { height = Math.round((height / width) * MAX_PX); width = MAX_PX; }
+          else                 { width  = Math.round((width / height) * MAX_PX); height = MAX_PX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width  = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        const b64 = canvas.toDataURL("image/jpeg", IMG_QUALITY);
+        console.log(`[Bild] Komprimiert: ${width}x${height}px | ${(b64.length / 1024).toFixed(1)} KB (${b64.length} Zeichen)`);
+        resolve(b64);
+      };
+      img.src = reader.result as string;
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -88,7 +110,7 @@ export default function AdminPanel({
   async function handleNewVehiclePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const b64 = await readFileAsBase64(file);
+    const b64 = await compressImageToBase64(file);
     setNewVehicle(prev => ({ ...prev, images: [b64] }));
     e.target.value = "";
   }
@@ -96,7 +118,7 @@ export default function AdminPanel({
   async function handleExistingVehiclePhoto(vehicle: Vehicle, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const b64 = await readFileAsBase64(file);
+    const b64 = await compressImageToBase64(file);
     onUpdateVehicle({ ...vehicle, images: [b64] });
     e.target.value = "";
   }
