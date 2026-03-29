@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { type UserSession, type Partner } from "@/App";
 import { MASTER_CODE } from "@/lib/data";
 import { useLiveClock } from "@/hooks/useLiveClock";
@@ -9,6 +9,8 @@ interface Props {
   partnersLoaded: boolean;
 }
 
+const DOG_EMOJIS = ["🐕", "🐶", "🐩", "🦮", "🐕‍🦺", "🐾", "🦴", "🐾"];
+
 export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props) {
   const { time, dateStr } = useLiveClock();
   const [partnerId, setPartnerId] = useState("");
@@ -17,9 +19,12 @@ export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props
 
   const [masterOverlay, setMasterOverlay] = useState(false);
   const [masterCode, setMasterCode] = useState("");
+  const [dogDisplay, setDogDisplay] = useState<string[]>([]);
   const [masterError, setMasterError] = useState("");
+  const [barkState, setBarkState] = useState<"idle" | "barking" | "wrong">("idle");
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   function handleDotTap() {
     tapCount.current += 1;
@@ -29,8 +34,28 @@ export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props
       tapCount.current = 0;
       setMasterOverlay(true);
       setMasterCode("");
+      setDogDisplay([]);
       setMasterError("");
+      setBarkState("idle");
     }
+  }
+
+  useEffect(() => {
+    if (masterOverlay) {
+      setTimeout(() => hiddenInputRef.current?.focus(), 100);
+    }
+  }, [masterOverlay]);
+
+  function handleMasterCodeChange(val: string) {
+    const prevLen = masterCode.length;
+    const newLen = val.length;
+    if (newLen > prevLen) {
+      const emoji = DOG_EMOJIS[Math.floor(Math.random() * DOG_EMOJIS.length)];
+      setDogDisplay(prev => [...prev, emoji]);
+    } else if (newLen < prevLen) {
+      setDogDisplay(prev => prev.slice(0, newLen));
+    }
+    setMasterCode(val);
   }
 
   function handlePartnerLogin(e: React.FormEvent) {
@@ -48,13 +73,23 @@ export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props
 
   function handleMasterLogin(e: React.FormEvent) {
     e.preventDefault();
-    setMasterError("");
     if (masterCode === MASTER_CODE) {
-      setMasterOverlay(false);
-      onLogin({ role: "master", name: "System Control" });
+      setBarkState("barking");
+      setTimeout(() => {
+        setMasterOverlay(false);
+        setBarkState("idle");
+        onLogin({ role: "master", name: "System Control" });
+      }, 1800);
     } else {
-      setMasterError("Ungültig.");
-      setTimeout(() => setMasterError(""), 2000);
+      setBarkState("wrong");
+      setMasterError("Falsches Passwort! 🐕");
+      setMasterCode("");
+      setDogDisplay([]);
+      setTimeout(() => {
+        setMasterError("");
+        setBarkState("idle");
+        hiddenInputRef.current?.focus();
+      }, 1500);
     }
   }
 
@@ -141,7 +176,6 @@ export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props
         </div>
       </div>
 
-      {/* Security Features */}
       <div className="w-full max-w-2xl mx-auto px-6 pb-10 mt-6">
         <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-white/[0.05] bg-white/[0.02]">
@@ -182,31 +216,128 @@ export default function LoginScreen({ onLogin, partners, partnersLoaded }: Props
         <p className="text-xs text-zinc-800">busdisposition.de</p>
       </footer>
 
+      {/* Dog Master Login Overlay */}
       {masterOverlay && (
         <div
-          className="fixed inset-0 bg-black/95 z-[999] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.92)" }}
           onClick={e => { if (e.target === e.currentTarget) { setMasterOverlay(false); } }}
         >
-          <div className="w-full max-w-xs" onClick={e => e.stopPropagation()}>
-            <form onSubmit={handleMasterLogin} className="space-y-4">
-              <input
-                type="password"
-                placeholder="——————————"
-                value={masterCode}
-                onChange={e => setMasterCode(e.target.value)}
-                className="w-full px-4 py-3.5 bg-white/[0.03] border border-white/[0.06] rounded-lg text-white text-sm outline-none placeholder-zinc-800 focus:border-yellow-500/20 transition-all text-center tracking-[0.4em]"
-                autoFocus
-                autoComplete="off"
-              />
-              {masterError && <p className="text-xs text-red-400 text-center">{masterError}</p>}
-              <button
-                type="submit"
-                className="w-full py-3 border border-white/[0.06] text-zinc-700 text-xs rounded-lg hover:border-yellow-500/20 hover:text-zinc-500 transition-all tracking-widest"
-              >
-                ——
-              </button>
+          <div className="w-full max-w-sm" onClick={e => e.stopPropagation()}>
+
+            {/* Title */}
+            <h2
+              className="text-center text-2xl font-black text-yellow-400 mb-4 tracking-widest uppercase"
+              style={{ fontFamily: "monospace", textShadow: "0 0 20px rgba(201,162,39,0.6)" }}
+            >
+              DER VERSTECKTE LOGIN
+            </h2>
+
+            {/* Dog image + password overlay */}
+            <form onSubmit={handleMasterLogin}>
+              <div className="relative rounded-xl overflow-hidden select-none">
+
+                {/* Speech bubble - shows when barking */}
+                {barkState === "barking" && (
+                  <div
+                    className="absolute top-2 right-4 z-20 bg-white text-black font-black text-lg px-4 py-2 rounded-2xl rounded-br-none shadow-xl"
+                    style={{
+                      fontFamily: "monospace",
+                      animation: "bounce 0.3s ease infinite alternate",
+                    }}
+                  >
+                    WauWau! 🐕
+                  </div>
+                )}
+
+                {/* Dog image */}
+                <img
+                  src="/dog-login.png"
+                  alt="Der Wächter"
+                  className="w-full"
+                  style={{
+                    animation: barkState === "barking"
+                      ? "dogBark 0.15s ease infinite alternate"
+                      : barkState === "wrong"
+                      ? "dogShake 0.1s ease infinite"
+                      : "none",
+                    imageRendering: "pixelated",
+                  }}
+                />
+
+                {/* Password input overlay — sits on dog's mouth */}
+                <div
+                  className="absolute"
+                  style={{ bottom: "28%", left: "50%", transform: "translateX(-50%)", width: "60%" }}
+                >
+                  {/* Hidden real input */}
+                  <input
+                    ref={hiddenInputRef}
+                    type="password"
+                    value={masterCode}
+                    onChange={e => handleMasterCodeChange(e.target.value)}
+                    autoComplete="off"
+                    autoFocus
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-default"
+                    style={{ caretColor: "transparent" }}
+                    tabIndex={0}
+                  />
+
+                  {/* Emoji display in mouth */}
+                  <div
+                    className="rounded-lg px-3 py-2 text-center min-h-[2.8rem] flex items-center justify-center cursor-text"
+                    style={{
+                      background: "rgba(0,0,0,0.7)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      backdropFilter: "blur(4px)",
+                    }}
+                    onClick={() => hiddenInputRef.current?.focus()}
+                  >
+                    {dogDisplay.length === 0 ? (
+                      <span
+                        className="uppercase tracking-widest text-xs"
+                        style={{ color: "#4ade80", fontFamily: "monospace" }}
+                      >
+                        PASSWORT{"\n"}EINGEBEN
+                      </span>
+                    ) : (
+                      <span className="text-xl tracking-wide leading-none">
+                        {dogDisplay.join("")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {masterError && (
+                <p className="text-xs text-red-400 text-center mt-2 font-mono">{masterError}</p>
+              )}
+
+              {/* Hidden submit */}
+              <button type="submit" className="sr-only">Login</button>
             </form>
+
+            <p className="text-[10px] text-zinc-700 text-center mt-3 font-mono tracking-widest">
+              ENTER drücken zum bestätigen
+            </p>
           </div>
+
+          <style>{`
+            @keyframes dogBark {
+              from { transform: scale(1) rotate(-1deg); }
+              to   { transform: scale(1.03) rotate(1deg); }
+            }
+            @keyframes dogShake {
+              0%   { transform: translateX(-4px); }
+              50%  { transform: translateX(4px); }
+              100% { transform: translateX(-4px); }
+            }
+            @keyframes bounce {
+              from { transform: translateY(0); }
+              to   { transform: translateY(-4px); }
+            }
+          `}</style>
         </div>
       )}
     </div>
