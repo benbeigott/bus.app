@@ -70,13 +70,13 @@ export default function FleetOverview({ vehicles, bookings, isMaster, onUpdateVe
             <div key={v.id} className="bg-white/[0.02] border border-white/[0.04] rounded-lg hover:border-yellow-500/15 transition-all overflow-hidden">
               {/* Bus photo — full-width banner if available */}
               {v.images?.[0] && (
-                <div className="w-full h-36 overflow-hidden relative">
+                <div className="w-full bg-zinc-950 overflow-hidden relative" style={{ aspectRatio: "16/7" }}>
                   <img
                     src={v.images[0]}
                     alt={v.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                   <div className="absolute bottom-2 left-3">
                     <span className="text-sm font-bold text-white drop-shadow">{v.name}</span>
                     <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[v.status]}`}>
