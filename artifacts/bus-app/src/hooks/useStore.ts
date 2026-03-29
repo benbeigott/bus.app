@@ -4,15 +4,6 @@ const API_BASE   = "/api/store";
 const POLL_MS    = 5_000;
 const WRITE_HOLD = 30_000;
 
-/* ─── Wipe ALL local cache on every startup — DB is always the only truth ── */
-(function wipeAllLocalCache() {
-  try {
-    for (const k of Object.keys(localStorage)) {
-      if (k.startsWith("bd_")) localStorage.removeItem(k);
-    }
-  } catch { /* private/incognito — ignore */ }
-})();
-
 /* ─── API helpers ─────────────────────────────────────────────────────── */
 async function apiGet<T>(key: string): Promise<{ ok: true; data: T } | { ok: false }> {
   try {
@@ -42,26 +33,46 @@ async function apiSet(key: string, value: unknown): Promise<boolean> {
   return false;
 }
 
-/* ─── Main hook — DB is the ONLY source of truth, never localStorage ──── */
+/* ─── localStorage helpers ────────────────────────────────────────────── */
+function lsRead<T>(key: string): T | null {
+  try {
+    const s = localStorage.getItem(`bd_${key}`);
+    return s ? (JSON.parse(s) as T) : null;
+  } catch { return null; }
+}
+function lsWrite(key: string, value: unknown) {
+  try { localStorage.setItem(`bd_${key}`, JSON.stringify(value)); } catch {}
+}
+
+/* ─── Main hook ────────────────────────────────────────────────────────── */
 export function useStore<T>(
   key: string,
   initial: T
 ): [T, (val: T | ((prev: T) => T)) => void, boolean] {
 
-  // Always start with empty initial — NEVER read from localStorage
-  const [data, setData]     = useState<T>(initial);
+  // Show localStorage instantly for fast first paint — DB overwrites within seconds
+  const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
   const [loaded, setLoaded] = useState(false);
   const mounted       = useRef(true);
   const lastWriteTs   = useRef<number>(0);
   const pendingWrites = useRef<number>(0);
 
-  /* ── Load from DB on startup ───────────────────────────────────────── */
+  /* DB always wins — writes to localStorage so next load is instant */
+  function fromDB(serverData: T) {
+    setData(prev => {
+      if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
+      lsWrite(key, serverData);
+      return serverData;
+    });
+  }
+
+  /* ── Load from DB on startup — overwrites stale localStorage ───────── */
   useEffect(() => {
     mounted.current = true;
 
     apiGet<T>(key).then(result => {
       if (!mounted.current) return;
-      if (result.ok) setData(result.data);
+      if (result.ok) fromDB(result.data);
       setLoaded(true);
     });
 
@@ -80,10 +91,7 @@ export function useStore<T>(
 
       const result = await apiGet<T>(key);
       if (!mounted.current || !result.ok) return;
-      setData(prev => {
-        if (JSON.stringify(prev) === JSON.stringify(result.data)) return prev;
-        return result.data;
-      });
+      fromDB(result.data);
     }, POLL_MS);
 
     return () => clearInterval(timer);
@@ -97,6 +105,7 @@ export function useStore<T>(
 
     setData(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
+      lsWrite(key, next);
 
       console.log(`[Store] Schreibe '${key}': ${JSON.stringify(next).length} Zeichen`);
 
