@@ -346,7 +346,7 @@ export default function AdminPanel({
                           onClick={() => setPhotoEditId(isEditingPhoto ? null : v.id)}
                         >
                           {hasPhoto ? (
-                            <img src={v.images![0]} alt={v.name} className="w-full h-full object-cover" />
+                            <img src={v.images![0]} alt={v.name} className="w-full h-full object-contain" />
                           ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-zinc-700">
                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
