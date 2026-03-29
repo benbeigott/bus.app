@@ -1,7 +1,5 @@
-// This function proxies all data requests to the Replit API server,
-// which uses PostgreSQL as its database — the single source of truth for all browsers.
-
 const REPLIT_API = process.env.REPLIT_API_URL || "";
+const TIMEOUT_MS = 8000; // 8 seconds max — never hang
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
@@ -25,11 +23,16 @@ module.exports = async function handler(req, res) {
 
   const targetUrl = `${REPLIT_API}?key=${encodeURIComponent(key)}&t=${Date.now()}`;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
   try {
     if (req.method === "GET") {
       const upstream = await fetch(targetUrl, {
+        signal: controller.signal,
         headers: { "Cache-Control": "no-cache" },
       });
+      clearTimeout(timer);
       const data = await upstream.json();
       return res.status(upstream.ok ? 200 : upstream.status).json(data);
     }
@@ -37,24 +40,24 @@ module.exports = async function handler(req, res) {
     if (req.method === "POST") {
       const upstream = await fetch(targetUrl, {
         method: "POST",
+        signal: controller.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: req.body?.value }),
       });
+      clearTimeout(timer);
       const data = await upstream.json();
       return res.status(upstream.ok ? 200 : upstream.status).json(data);
     }
 
     return res.status(405).json({ error: "Method not allowed" });
   } catch (err) {
-    console.error("Proxy error:", err?.message);
-    return res.status(502).json({ error: "Proxy error: " + (err?.message || "unknown") });
+    clearTimeout(timer);
+    const isTimeout = err?.name === "AbortError";
+    console.error(`[Proxy] ${isTimeout ? "TIMEOUT" : "ERROR"} key='${key}':`, err?.message);
+    return res.status(502).json({ error: isTimeout ? "Server timeout" : "Proxy error: " + (err?.message || "unknown") });
   }
 };
 
 module.exports.config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "50mb",
-    },
-  },
+  api: { bodyParser: { sizeLimit: "50mb" } },
 };
