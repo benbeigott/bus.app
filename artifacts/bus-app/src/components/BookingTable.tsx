@@ -40,6 +40,7 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
   const [showModal, setShowModal] = useState(false);
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const [filter, setFilter] = useState<"all" | Booking["status"]>("all");
+  const [confirmClear, setConfirmClear] = useState(false);
   const [form, setForm] = useState<BookingForm>({
     vehicleId: vehicles[0]?.id || "",
     date: "",
@@ -146,12 +147,38 @@ export default function BookingTable({ bookings, vehicles, isMaster, onUpdate, l
             ))}
           </div>
           {isMaster && (
-            <button
-              onClick={openNew}
-              className="text-xs bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black font-semibold px-4 py-1.5 rounded-lg hover:shadow-[0_4px_20px_rgba(201,162,39,0.25)] transition-all"
-            >
-              + Neue Buchung
-            </button>
+            <>
+              {confirmClear ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-400">Wirklich alle löschen?</span>
+                  <button
+                    onClick={() => { onUpdate([]); setConfirmClear(false); }}
+                    className="text-xs bg-red-600 hover:bg-red-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    Ja, löschen
+                  </button>
+                  <button
+                    onClick={() => setConfirmClear(false)}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 px-2 py-1.5"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmClear(true)}
+                  className="text-xs bg-red-900/40 hover:bg-red-700/60 text-red-400 hover:text-red-300 border border-red-800/50 font-semibold px-3 py-1.5 rounded-lg transition-all"
+                >
+                  Alle löschen
+                </button>
+              )}
+              <button
+                onClick={openNew}
+                className="text-xs bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-300 text-black font-semibold px-4 py-1.5 rounded-lg hover:shadow-[0_4px_20px_rgba(201,162,39,0.25)] transition-all"
+              >
+                + Neue Buchung
+              </button>
+            </>
           )}
         </div>
       </div>
