@@ -4,18 +4,11 @@ const API_BASE   = "/api/store";
 const POLL_MS    = 5_000;
 const WRITE_HOLD = 30_000;
 
-// Increment this whenever stale browser caches need to be wiped.
-// On first load with a new version, ALL old bd_* localStorage keys are cleared.
-const CACHE_VERSION = "v6";
-
-/* ─── One-time cache wipe at module load ──────────────────────────────── */
-(function wipeStaleCache() {
+/* ─── Wipe ALL local cache on every startup — DB is always the only truth ── */
+(function wipeAllLocalCache() {
   try {
-    if (localStorage.getItem("bd_version") !== CACHE_VERSION) {
-      for (const k of Object.keys(localStorage)) {
-        if (k.startsWith("bd_")) localStorage.removeItem(k);
-      }
-      localStorage.setItem("bd_version", CACHE_VERSION);
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith("bd_")) localStorage.removeItem(k);
     }
   } catch { /* private/incognito — ignore */ }
 })();
@@ -49,41 +42,18 @@ async function apiSet(key: string, value: unknown): Promise<boolean> {
   return false;
 }
 
-/* ─── localStorage — only for instant first paint, always overwritten by DB ── */
-function lsRead<T>(key: string): T | null {
-  try {
-    const s = localStorage.getItem(`bd_${key}`);
-    return s ? (JSON.parse(s) as T) : null;
-  } catch { return null; }
-}
-function lsWrite(key: string, value: unknown) {
-  try { localStorage.setItem(`bd_${key}`, JSON.stringify(value)); } catch {}
-}
-
-function isEmpty(v: unknown): boolean {
-  return v === null || v === undefined || (Array.isArray(v) && v.length === 0);
-}
-
-/* ─── Main hook ────────────────────────────────────────────────────────── */
+/* ─── Main hook — DB is the ONLY source of truth, never localStorage ──── */
 export function useStore<T>(
   key: string,
   initial: T
 ): [T, (val: T | ((prev: T) => T)) => void, boolean] {
 
-  const [data, setData]     = useState<T>(() => lsRead<T>(key) ?? initial);
+  // Always start with empty initial — NEVER read from localStorage
+  const [data, setData]     = useState<T>(initial);
   const [loaded, setLoaded] = useState(false);
   const mounted       = useRef(true);
   const lastWriteTs   = useRef<number>(0);
   const pendingWrites = useRef<number>(0);
-
-  /* Database is always the truth */
-  function fromDB(serverData: T) {
-    setData(prev => {
-      if (JSON.stringify(prev) === JSON.stringify(serverData)) return prev;
-      lsWrite(key, serverData);
-      return serverData;
-    });
-  }
 
   /* ── Load from DB on startup ───────────────────────────────────────── */
   useEffect(() => {
@@ -91,7 +61,7 @@ export function useStore<T>(
 
     apiGet<T>(key).then(result => {
       if (!mounted.current) return;
-      if (result.ok && !isEmpty(result.data)) fromDB(result.data);
+      if (result.ok) setData(result.data);
       setLoaded(true);
     });
 
@@ -110,7 +80,10 @@ export function useStore<T>(
 
       const result = await apiGet<T>(key);
       if (!mounted.current || !result.ok) return;
-      if (!isEmpty(result.data)) fromDB(result.data);
+      setData(prev => {
+        if (JSON.stringify(prev) === JSON.stringify(result.data)) return prev;
+        return result.data;
+      });
     }, POLL_MS);
 
     return () => clearInterval(timer);
@@ -120,12 +93,10 @@ export function useStore<T>(
   /* ── Write: save to DB immediately ────────────────────────────────── */
   const setState = useCallback((val: T | ((prev: T) => T)) => {
     lastWriteTs.current = Date.now();
-    // Increment BEFORE setData so the poll guard fires immediately (no race condition)
     pendingWrites.current++;
 
     setData(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
-      lsWrite(key, next);
 
       console.log(`[Store] Schreibe '${key}': ${JSON.stringify(next).length} Zeichen`);
 
